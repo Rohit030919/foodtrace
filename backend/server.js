@@ -5,7 +5,7 @@ const mongoose = require("mongoose");
 const User = require("./models/User");
 require("dotenv").config();
 
-mongoose.connect("mongodb://127.0.0.1:27017/foodtrace")
+mongoose.connect("process.env.MONGO_URI")
   .then(() => console.log("MongoDB Connected"))
   .catch(err => console.log(err));
 
