@@ -41,4 +41,14 @@ export const getQR = async (id) => {
   return res.data.qr;
 };
 
+export const loginUser = async (username, password) => {
+  const res = await api.post('/login', { username, password });
+  return res.data;
+};
+
+export const registerUser = async (username, password) => {
+  const res = await api.post('/register', { username, password });
+  return res.data;
+};
+
 export default api;

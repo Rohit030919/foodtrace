@@ -1,13 +1,14 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
 
+const BASE_URL = "https://foodtrace-backend.onrender.com";
+
 export default function AdminDashboard() {
   const [form, setForm] = useState({
     username: "",
     password: "",
     role: "farmer",
   });
-
   const [loading, setLoading] = useState(false);
 
   const handleChange = (field) => (e) => {
@@ -17,13 +18,10 @@ export default function AdminDashboard() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      const res = await fetch("http://localhost:5000/admin/addUser", {
+      const res = await fetch(`${BASE_URL}/admin/addUser`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
 
@@ -34,12 +32,7 @@ export default function AdminDashboard() {
       }
 
       toast.success("User added successfully ✅");
-
-      setForm({
-        username: "",
-        password: "",
-        role: "farmer",
-      });
+      setForm({ username: "", password: "", role: "farmer" });
 
     } catch (err) {
       toast.error("Server error");
@@ -51,12 +44,9 @@ export default function AdminDashboard() {
   return (
     <div className="max-w-xl mx-auto px-4 py-10 text-white">
       <h1 className="text-2xl font-bold mb-6">Admin Panel</h1>
-
       <div className="glass-card p-6">
         <h2 className="text-lg mb-4">Add New User</h2>
-
         <form onSubmit={handleSubmit} className="space-y-4">
-
           <input
             type="text"
             placeholder="Username"
@@ -64,7 +54,6 @@ export default function AdminDashboard() {
             value={form.username}
             onChange={handleChange("username")}
           />
-
           <input
             type="password"
             placeholder="Password"
@@ -72,7 +61,6 @@ export default function AdminDashboard() {
             value={form.password}
             onChange={handleChange("password")}
           />
-
           <select
             className="input-field w-full"
             value={form.role}
@@ -82,15 +70,13 @@ export default function AdminDashboard() {
             <option value="transporter">Transporter</option>
             <option value="retailer">Retailer</option>
           </select>
-
           <button
             type="submit"
-            className="w-full bg-purple-600 hover:bg-purple-500 py-3 rounded-lg"
+            className="w-full bg-purple-600 hover:bg-purple-500 py-3 rounded-lg transition-colors"
             disabled={loading}
           >
             {loading ? "Adding..." : "Add User"}
           </button>
-
         </form>
       </div>
     </div>

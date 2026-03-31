@@ -3,27 +3,27 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { ShieldCheck } from 'lucide-react';
 
+const BASE_URL = "https://foodtrace-backend.onrender.com";
+
 export default function LoginPage() {
   const { setRole } = useApp();
   const navigate = useNavigate();
 
   const [isRegister, setIsRegister] = useState(false);
-
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // LOGIN
   const handleLogin = async (e) => {
     e.preventDefault();
-
+    setLoading(true);
+    setError('');
     try {
-      const res = await fetch("http://localhost:5000/login", {
+      const res = await fetch(`${BASE_URL}/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password })
       });
 
@@ -38,19 +38,19 @@ export default function LoginPage() {
 
     } catch (err) {
       setError("Server error");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // REGISTER
   const handleRegister = async (e) => {
     e.preventDefault();
-
+    setLoading(true);
+    setError('');
     try {
-      const res = await fetch("http://localhost:5000/register", {
+      const res = await fetch(`${BASE_URL}/register`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password })
       });
 
@@ -66,16 +66,16 @@ export default function LoginPage() {
 
     } catch (err) {
       setError("Server error");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16 relative">
 
-      {/* Background */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-brand-500/5 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Header */}
       <div className="text-center mb-12">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-sm font-semibold mb-6">
           <ShieldCheck size={15} />
@@ -89,10 +89,8 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* Form */}
       <div className="glass-card p-6 w-full max-w-md">
         <form onSubmit={isRegister ? handleRegister : handleLogin} className="space-y-4">
-
           <input
             type="text"
             placeholder="Username"
@@ -100,7 +98,6 @@ export default function LoginPage() {
             value={username}
             onChange={(e) => { setUsername(e.target.value); setError(''); }}
           />
-
           <input
             type="password"
             placeholder="Password"
@@ -112,22 +109,16 @@ export default function LoginPage() {
           {error && <p className="text-red-400 text-sm">{error}</p>}
           {message && <p className="text-green-400 text-sm">{message}</p>}
 
-          <button className="btn-primary w-full">
-            {isRegister ? "Register" : "Login"}
+          <button className="btn-primary w-full" disabled={loading}>
+            {loading ? "Please wait..." : isRegister ? "Register" : "Login"}
           </button>
-
         </form>
 
-        {/* Toggle */}
         <p className="text-sm text-slate-400 mt-4 text-center">
           {isRegister ? "Already have an account?" : "Don't have an account?"}
           <span
             className="text-brand-400 cursor-pointer ml-1"
-            onClick={() => {
-              setIsRegister(!isRegister);
-              setError('');
-              setMessage('');
-            }}
+            onClick={() => { setIsRegister(!isRegister); setError(''); setMessage(''); }}
           >
             {isRegister ? "Login" : "Register"}
           </span>
