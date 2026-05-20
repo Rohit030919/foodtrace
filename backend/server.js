@@ -99,7 +99,14 @@ app.post("/updateBatch", async (req, res) => {
   try {
     const { id, stage, location } = req.body;
 
-    const tx = await contractWrite.updateBatch(id, stage, location);
+    // Check batch exists in MongoDB using string ID
+    const batchRecord = await Batch.findOne({ stringId: id });
+    if (!batchRecord) {
+      return res.status(404).send("Batch does not exist");
+    }
+
+    // Use numeric ID for blockchain
+    const tx = await contractWrite.updateBatch(batchRecord.numericId, stage, location);
     await tx.wait();
 
     res.send("Batch updated successfully");

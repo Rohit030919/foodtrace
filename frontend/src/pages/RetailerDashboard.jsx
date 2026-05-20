@@ -1,46 +1,147 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Store, Hash, MapPin, CheckCircle2 } from 'lucide-react';
-import { updateBatch } from '../services/api';
-import FormField from '../components/FormField';
+import { Store, MapPin, CheckCircle2, Loader } from 'lucide-react';
 import { Spinner } from '../components/LoadingSpinner';
 
+const BASE_URL = "https://foodtrace-backend.onrender.com";
+
 export default function RetailerDashboard() {
-  const [form, setForm] = useState({ id: '', location: '' });
-  const [errors, setErrors] = useState({});
+  const [batchId, setBatchId] = useState('');
+  const [batchVerified, setBatchVerified] = useState(false);
+  const [batchInfo, setBatchInfo] = useState(null);
+  const [verifying, setVerifying] = useState(false);
+
+  const [location, setLocation] = useState('');
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState('');
+  const [manualLocation, setManualLocation] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
 
-  const validate = () => {
-    const errs = {};
-    if (!form.id || isNaN(form.id)) errs.id = 'Valid numeric batch ID required';
-    if (!form.location.trim()) errs.location = 'Store name is required';
-    return errs;
+  useEffect(() => {
+    detectLocation();
+  }, []);
+
+  const detectLocation = () => {
+    setLocationLoading(true);
+    setLocationError('');
+    setLocation('');
+
+    if (!navigator.geolocation) {
+      setLocationError('GPS not supported on this device');
+      setLocationLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+          );
+          const data = await res.json();
+          const addr = data.address;
+          const parts = [
+            addr.village || addr.town || addr.city || addr.suburb,
+            addr.district || addr.county,
+            addr.state,
+          ].filter(Boolean);
+          setLocation(parts.join(', '));
+        } catch {
+          setLocationError('Could not convert GPS to address. Try again.');
+        } finally {
+          setLocationLoading(false);
+        }
+      },
+      (err) => {
+        setLocationLoading(false);
+        if (err.code === 1) {
+          setLocationError('Location permission denied. Please allow GPS access.');
+        } else {
+          setLocationError('Could not get location. Try again.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const verifyBatch = async () => {
+    if (!batchId.trim()) {
+      toast.error('Please enter a Batch ID');
+      return;
+    }
+    setVerifying(true);
+    try {
+      const res = await fetch(`${BASE_URL}/getBatch/${batchId.trim()}`);
+      if (!res.ok) {
+        toast.error('Batch ID does not exist. Check the ID and try again.');
+        setBatchVerified(false);
+        setBatchInfo(null);
+        return;
+      }
+      const data = await res.json();
+      setBatchInfo(data);
+      setBatchVerified(true);
+      toast.success('Batch verified ✅');
+    } catch {
+      toast.error('Error verifying batch');
+    } finally {
+      setVerifying(false);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-    setErrors({});
+
+    if (!batchVerified) {
+      toast.error('Please verify the batch ID first');
+      return;
+    }
+    if (!location) {
+      toast.error('GPS location is required');
+      return;
+    }
+    if (!manualLocation.trim()) {
+      toast.error('Please enter your store name');
+      return;
+    }
+
+    const fullLocation = `${manualLocation}, ${location}`;
     setLoading(true);
+
     try {
-      await updateBatch({ id: form.id, stage: 2, location: form.location });
-      setLastUpdate({ ...form });
+      const res = await fetch(`${BASE_URL}/updateBatch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: batchId.trim(),
+          stage: 2,
+          location: fullLocation
+        })
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+        toast.error(msg);
+        return;
+      }
+
+      setLastUpdate({ id: batchId, location: fullLocation });
       setSuccess(true);
-      toast.success(`Retail arrival recorded for Batch #${form.id} 🏪`);
-      setForm({ id: '', location: '' });
+      toast.success(`Retail arrival recorded for Batch ${batchId} 🏪`);
+      setBatchId('');
+      setBatchVerified(false);
+      setBatchInfo(null);
+      setManualLocation('');
+
     } catch (err) {
       toast.error(err.message || 'Transaction failed');
     } finally {
       setLoading(false);
     }
-  };
-
-  const change = (field) => (e) => {
-    setForm(p => ({ ...p, [field]: e.target.value }));
-    if (errors[field]) setErrors(p => ({ ...p, [field]: '' }));
   };
 
   return (
@@ -72,38 +173,93 @@ export default function RetailerDashboard() {
           Confirm Batch Arrival
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <FormField label="Batch ID" id="batch-id" error={errors.id} hint="Scan QR or enter batch ID manually">
-            <div className="relative">
-              <Hash size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                id="batch-id"
-                type="number"
-                className="input-field pl-9"
-                placeholder="e.g. 1001"
-                value={form.id}
-                onChange={change('id')}
-              />
-            </div>
-          </FormField>
 
-          <FormField label="Store Name / Retail Location" id="location" error={errors.location}>
+          {/* Batch ID + Verify */}
+          <div>
+            <label className="text-sm text-slate-400 mb-1 block">Batch ID</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                className="input-field flex-1"
+                placeholder="e.g. roh-ap1-xw3k"
+                value={batchId}
+                onChange={(e) => {
+                  setBatchId(e.target.value);
+                  setBatchVerified(false);
+                  setBatchInfo(null);
+                }}
+              />
+              <button
+                type="button"
+                onClick={verifyBatch}
+                disabled={verifying}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+              >
+                {verifying ? <Loader size={14} className="animate-spin" /> : 'Verify'}
+              </button>
+            </div>
+
+            {batchVerified && batchInfo && (
+              <div className="mt-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <p className="text-amber-400 text-sm font-semibold">✅ Batch Verified</p>
+                <p className="text-slate-400 text-xs mt-1">
+                  <strong className="text-white">{batchInfo.name}</strong> — Origin: {batchInfo.origin}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* GPS Region - locked */}
+          <div>
+            <label className="text-sm text-slate-400 mb-1 block">
+              Current Region (Auto-detected via GPS)
+            </label>
             <div className="relative">
               <MapPin size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              {locationLoading && (
+                <Loader size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 animate-spin" />
+              )}
+              {!locationLoading && (
+                <button
+                  type="button"
+                  onClick={detectLocation}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-amber-400 hover:text-amber-300"
+                >
+                  {location ? 'Refresh' : 'Retry'}
+                </button>
+              )}
               <input
-                id="location"
                 type="text"
-                className="input-field pl-9"
-                placeholder="e.g. Reliance Fresh, Baner Pune"
-                value={form.location}
-                onChange={change('location')}
+                className="input-field pl-9 pr-16 w-full bg-slate-800/50 cursor-not-allowed text-slate-300"
+                placeholder={locationLoading ? "Detecting location..." : "Detecting..."}
+                value={location}
+                disabled
+                readOnly
               />
             </div>
-          </FormField>
+            {locationError && <p className="text-red-400 text-xs mt-1">{locationError}</p>}
+            <p className="text-slate-600 text-xs mt-1">📍 Auto-detected — cannot be changed</p>
+          </div>
+
+          {/* Manual store name */}
+          <div>
+            <label className="text-sm text-slate-400 mb-1 block">Store Name / Specific Location</label>
+            <div className="relative">
+              <Store size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                className="input-field pl-9 w-full"
+                placeholder="e.g. Reliance Fresh, Baner"
+                value={manualLocation}
+                onChange={(e) => setManualLocation(e.target.value)}
+              />
+            </div>
+          </div>
 
           <button
             type="submit"
-            className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-            disabled={loading}
+            className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading || !batchVerified || locationLoading}
           >
             {loading
               ? <><Spinner size="sm" color="white" /> Broadcasting Transaction…</>
@@ -122,7 +278,7 @@ export default function RetailerDashboard() {
             <div>
               <h3 className="font-display font-bold text-amber-400 text-lg">Retail Arrival Logged!</h3>
               <p className="text-slate-400 text-sm mt-1">
-                Batch <strong className="text-white">#{lastUpdate.id}</strong> is now recorded at{' '}
+                Batch <strong className="text-white">{lastUpdate.id}</strong> recorded at{' '}
                 <strong className="text-white">{lastUpdate.location}</strong>
               </p>
             </div>
@@ -134,9 +290,10 @@ export default function RetailerDashboard() {
       <div className="mt-6 glass-card p-4">
         <h3 className="font-display font-semibold text-slate-400 text-sm mb-2">🏪 Retailer Role</h3>
         <ul className="space-y-1.5 text-sm text-slate-500">
-          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">01.</span> Receive the batch from the transporter with its QR code</li>
-          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">02.</span> Enter the Batch ID and your store name</li>
-          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">03.</span> Submit to record Stage 2 (Retail) — customers can now verify the full journey</li>
+          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">01.</span> Enter the Batch ID from the QR code and verify it</li>
+          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">02.</span> GPS auto-detects your current region</li>
+          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">03.</span> Enter your store name manually</li>
+          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">04.</span> Submit to record Stage 2 (Retail) on the blockchain</li>
         </ul>
       </div>
     </div>

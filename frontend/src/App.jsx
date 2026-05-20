@@ -34,8 +34,22 @@ function AppRoutes() {
           {/* Other routes */}
           <Route path="/qr/:id" element={<QRPage />} />
           <Route path="/qr" element={<QRPage />} />
-          <Route path="/batch/:id" element={<BatchTrackingPage />} />
-          <Route path="/track" element={<TrackPage />} />
+          <Route
+            path="/batch/:id"
+            element={
+              <ProtectedRoute>
+                <BatchTrackingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/track"
+            element={
+              <ProtectedRoute>
+                <TrackPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Default fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
