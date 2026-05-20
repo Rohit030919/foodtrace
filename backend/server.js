@@ -118,7 +118,7 @@ app.get("/generateQR/:id", async (req, res) => {
 
     const qrImage = await QRCode.toDataURL(url);
 
-    res.json({ qr: qrImage }); // ✅ send JSON, not HTML
+    res.json({ qr: qrImage }); //
 
   } catch (err) {
     res.status(500).send(err.message);
@@ -174,7 +174,7 @@ app.post("/login", async (req, res) => {
 
 app.post("/admin/addUser", async (req, res) => {
   try {
-    const { username, password, role } = req.body;
+    const { username, password, role, profile } = req.body;
 
     // Allow only specific roles
     const allowedRoles = ["farmer", "transporter", "retailer"];
@@ -188,7 +188,37 @@ app.post("/admin/addUser", async (req, res) => {
       return res.status(400).send("User already exists");
     }
 
-    const newUser = new User({ username, password, role });
+    // Build user object based on role
+    let userData = { username, password, role };
+
+    if (role === "farmer") {
+      userData.farmerName   = profile.farmerName   || "";
+      userData.contact      = profile.contact      || "";
+      userData.aadharNo     = profile.aadharNo     || "";
+      userData.farmLocation = profile.farmLocation || "";
+      userData.village      = profile.village      || "";
+    }
+
+    if (role === "transporter") {
+      userData.transporterName  = profile.transporterName  || "";
+      userData.transporterPhone = profile.transporterPhone || "";
+      userData.vehicleNumber    = profile.vehicleNumber    || "";
+      userData.licenseNumber    = profile.licenseNumber    || "";
+      userData.companyName      = profile.companyName      || "";
+      userData.vehicleType      = profile.vehicleType      || "";
+    }
+
+    if (role === "retailer") {
+      userData.retailerName  = profile.retailerName  || "";
+      userData.shopName      = profile.shopName      || "";
+      userData.shopAddress   = profile.shopAddress   || "";
+      userData.city          = profile.city          || "";
+      userData.state         = profile.state         || "";
+      userData.retailerPhone = profile.retailerPhone || "";
+      userData.gstin         = profile.gstin         || "";
+    }
+
+    const newUser = new User(userData);
     await newUser.save();
 
     res.send("User added successfully");
