@@ -81,6 +81,7 @@ export default function FarmerDashboard() {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Product name is required';
     if (!location) errs.location = 'Location is required. Please allow GPS access.';
+    if (!form.farmAddress || !form.farmAddress.trim()) errs.farmAddress = 'Specific farm address is required';
     return errs;
   };
 
@@ -94,12 +95,15 @@ export default function FarmerDashboard() {
     try {
       const farmerUsername = localStorage.getItem("username");
 
+      // Combine GPS region + manual address
+      const fullOrigin = `${form.farmAddress}, ${location}`;
+
       const res = await fetch(`${BASE_URL}/createBatch`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name,
-          origin: location,
+          origin: fullOrigin,
           farmerUsername
         })
       });
@@ -112,11 +116,11 @@ export default function FarmerDashboard() {
 
       const data = await res.json();
 
-      setCreated({ name: form.name, origin: location, id: data.stringId });
-      setLastCreatedBatch({ name: form.name, origin: location, id: data.stringId });
+      setCreated({ name: form.name, origin: fullOrigin, id: data.stringId });
+      setLastCreatedBatch({ name: form.name, origin: fullOrigin, id: data.stringId });
       setSuccess(true);
       toast.success(`Batch ${data.stringId} created on-chain! 🌿`);
-      setForm({ name: '' });
+      setForm({ name: '', farmAddress: '' });
 
     } catch (err) {
       toast.error(err.message || 'Transaction failed');
@@ -170,48 +174,63 @@ export default function FarmerDashboard() {
               {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
             </div>
 
-            {/* Auto GPS Location */}
+            
+            {/* GPS Region - Auto detected, read only */}
             <div>
               <label className="text-sm text-slate-400 mb-1 block">
-                Farm Location (Auto-detected via GPS)
+                Region (Auto-detected via GPS)
               </label>
               <div className="relative">
                 <MapPin size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                <div className={`input-field pl-9 w-full flex items-center justify-between
-                  ${errors.location ? 'border-red-500' : ''}
-                  ${location ? 'text-white' : 'text-slate-500'}`}
-                >
-                  {locationLoading ? (
-                    <span className="flex items-center gap-2 text-slate-400">
-                      <Loader size={14} className="animate-spin" />
-                      Detecting location...
-                    </span>
-                  ) : location ? (
-                    <span>{location}</span>
-                  ) : (
-                    <span>Location not detected</span>
-                  )}
-
-                  {/* Retry button */}
-                  {!locationLoading && (
-                    <button
-                      type="button"
-                      onClick={detectLocation}
-                      className="text-xs text-brand-400 hover:text-brand-300 ml-2 flex-shrink-0"
-                    >
-                      {location ? 'Refresh' : 'Retry'}
-                    </button>
-                  )}
-                </div>
+                {locationLoading && (
+                  <Loader size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 animate-spin" />
+                )}
+                {!locationLoading && (
+                  <button
+                    type="button"
+                    onClick={detectLocation}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-brand-400 hover:text-brand-300"
+                  >
+                    {location ? 'Refresh' : 'Retry'}
+                  </button>
+                )}
+                <input
+                  type="text"
+                  className="input-field pl-9 pr-16 w-full bg-slate-800/50 cursor-not-allowed text-slate-300"
+                  placeholder={locationLoading ? "Detecting location..." : "Detecting..."}
+                  value={location}
+                  disabled
+                  readOnly
+                />
               </div>
               {locationError && (
                 <p className="text-red-400 text-xs mt-1">{locationError}</p>
               )}
-              {errors.location && !locationError && (
-                <p className="text-red-400 text-xs mt-1">{errors.location}</p>
+              <p className="text-slate-600 text-xs mt-1">
+                📍 Auto-detected — cannot be changed
+              </p>
+            </div>
+
+            {/* Manual specific address */}
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">
+                Specific Farm Address
+              </label>
+              <div className="relative">
+                <MapPin size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  className={`input-field pl-9 w-full ${errors.farmAddress ? 'border-red-500' : ''}`}
+                  placeholder="e.g. Plot 12, Near Gram Panchayat, Dhayari"
+                  value={form.farmAddress || ''}
+                  onChange={change('farmAddress')}
+                />
+              </div>
+              {errors.farmAddress && (
+                <p className="text-red-400 text-xs mt-1">{errors.farmAddress}</p>
               )}
               <p className="text-slate-600 text-xs mt-1">
-                📍 Your current GPS location is used automatically
+                ✏️ Enter your specific farm address manually
               </p>
             </div>
 
