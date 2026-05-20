@@ -1,5 +1,6 @@
 const express = require("express");
 const { ethers } = require("ethers");
+const Batch = require("./models/Batch");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const User = require("./models/User");
@@ -36,14 +37,57 @@ app.get("/", (req, res) => {
 
 
 // CREATE BATCH (dynamic)
+// Helper: generate string batch ID
+function generateBatchId(farmerUsername, productName, count) {
+  const farmerPart = farmerUsername.toLowerCase().slice(0, 3);
+  const productPart = productName.toLowerCase().replace(/\s+/g, '').slice(0, 2);
+  const countPart = count;
+  const randomPart = Math.random().toString(36).slice(2, 6); // 4 random chars
+  return `${farmerPart}-${productPart}${countPart}-${randomPart}`;
+}
+
+// CREATE BATCH (auto ID generation)
 app.post("/createBatch", async (req, res) => {
   try {
-    const { id, name, origin } = req.body;
+    const { name, origin, farmerUsername } = req.body;
 
-    const tx = await contractWrite.createBatch(id, name, origin);
+    if (!name || !origin || !farmerUsername) {
+      return res.status(400).send("Name, origin and farmerUsername are required");
+    }
+
+    // Count how many batches this farmer made with this product
+    const existingCount = await Batch.countDocuments({
+      farmerUsername: farmerUsername.toLowerCase(),
+      productName: name.toLowerCase().replace(/\s+/g, '')
+    });
+    const count = existingCount + 1;
+
+    // Generate string ID
+    const stringId = generateBatchId(farmerUsername, name, count);
+
+    // Generate numeric ID (total batches ever + 1)
+    const totalBatches = await Batch.countDocuments();
+    const numericId = totalBatches + 1;
+
+    // Save mapping to MongoDB first
+    const newBatch = new Batch({
+      stringId,
+      numericId,
+      farmerUsername: farmerUsername.toLowerCase(),
+      productName: name.toLowerCase().replace(/\s+/g, '')
+    });
+    await newBatch.save();
+
+    // Write to blockchain using numeric ID
+    const tx = await contractWrite.createBatch(numericId, name, origin);
     await tx.wait();
 
-    res.send("Batch created successfully");
+    res.json({
+      message: "Batch created successfully",
+      stringId,
+      numericId
+    });
+
   } catch (err) {
     res.status(500).send(err.message);
   }
@@ -66,12 +110,22 @@ app.post("/updateBatch", async (req, res) => {
 
 
 // GET BATCH INFO
+// GET BATCH INFO (accepts string ID)
 app.get("/getBatch/:id", async (req, res) => {
   try {
-    const data = await contractRead.getBatch(req.params.id);
+    const stringId = req.params.id;
+
+    // Look up numeric ID from MongoDB
+    const batchRecord = await Batch.findOne({ stringId });
+    if (!batchRecord) {
+      return res.status(404).send("Batch not found");
+    }
+
+    const data = await contractRead.getBatch(batchRecord.numericId);
 
     res.json({
-      id: Number(data[0]),
+      id: stringId,
+      numericId: batchRecord.numericId,
       name: data[1],
       origin: data[2],
       creator: data[3]
@@ -83,17 +137,23 @@ app.get("/getBatch/:id", async (req, res) => {
 });
 
 
-// GET HISTORY (final fixed)
+// GET HISTORY (accepts string ID)
 app.get("/getHistory/:id", async (req, res) => {
   try {
-    const id = BigInt(req.params.id);
-    const length = Number(await contractRead.getHistoryLength(id));
+    const stringId = req.params.id;
+
+    // Look up numeric ID from MongoDB
+    const batchRecord = await Batch.findOne({ stringId });
+    if (!batchRecord) {
+      return res.status(404).send("Batch not found");
+    }
+
+    const numericId = BigInt(batchRecord.numericId);
+    const length = Number(await contractRead.getHistoryLength(numericId));
 
     let history = [];
-
     for (let i = 0; i < length; i++) {
-      const event = await contractRead.getFunction("getEvent")(id, i);
-
+      const event = await contractRead.getFunction("getEvent")(numericId, i);
       history.push({
         stage: Number(event[0]),
         location: event[1],
@@ -103,6 +163,7 @@ app.get("/getHistory/:id", async (req, res) => {
     }
 
     res.json(history);
+
   } catch (err) {
     res.status(500).send(err.message);
   }
@@ -112,13 +173,18 @@ const QRCode = require("qrcode");
 
 app.get("/generateQR/:id", async (req, res) => {
   try {
-    const batchId = req.params.id;
+    const batchId = req.params.id; 
+
+    // Verify batch exists in MongoDB
+    const batchRecord = await Batch.findOne({ stringId: batchId });
+    if (!batchRecord) {
+      return res.status(404).send("Batch not found");
+    }
 
     const url = `https://foodtrace-omega.vercel.app/batch/${batchId}`;
-
     const qrImage = await QRCode.toDataURL(url);
 
-    res.json({ qr: qrImage }); //
+    res.json({ qr: qrImage });
 
   } catch (err) {
     res.status(500).send(err.message);

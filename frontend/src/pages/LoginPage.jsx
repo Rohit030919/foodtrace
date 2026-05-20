@@ -34,6 +34,7 @@ export default function LoginPage() {
 
       const data = await res.json();
       setRole(data.role);
+      localStorage.setItem("username", username);
       navigate("/dashboard");
 
     } catch (err) {
