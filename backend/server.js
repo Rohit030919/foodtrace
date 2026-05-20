@@ -182,6 +182,39 @@ app.post("/admin/addUser", async (req, res) => {
       return res.status(400).send("Invalid role");
     }
 
+    // Validate profile exists
+    if (!profile || typeof profile !== "object") {
+      return res.status(400).send("Profile details are required");
+    }
+
+    // Validate role-specific required fields
+    if (role === "farmer") {
+      const required = ["farmerName", "contact", "aadharNo", "farmLocation", "village"];
+      for (const field of required) {
+        if (!profile[field] || !profile[field].trim()) {
+          return res.status(400).send(`Farmer ${field} is required`);
+        }
+      }
+    }
+
+    if (role === "transporter") {
+      const required = ["transporterName", "transporterPhone", "vehicleNumber", "licenseNumber", "companyName", "vehicleType"];
+      for (const field of required) {
+        if (!profile[field] || !profile[field].trim()) {
+          return res.status(400).send(`Transporter ${field} is required`);
+        }
+      }
+    }
+
+    if (role === "retailer") {
+      const required = ["retailerName", "shopName", "shopAddress", "city", "state", "retailerPhone"];
+      for (const field of required) {
+        if (!profile[field] || !profile[field].trim()) {
+          return res.status(400).send(`Retailer ${field} is required`);
+        }
+      }
+    }
+
     // Check existing user
     const existingUser = await User.findOne({ username });
     if (existingUser) {

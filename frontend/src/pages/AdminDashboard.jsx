@@ -58,8 +58,30 @@ export default function AdminDashboard() {
     setProfile({ ...profile, [field]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate username and password
+    if (!form.username.trim()) {
+      toast.error("Username is required");
+      return;
+    }
+    if (!form.password.trim()) {
+      toast.error("Password is required");
+      return;
+    }
+
+    // Validate all role-specific fields
+    const currentFields = roleFields[form.role] || [];
+    for (const field of currentFields) {
+      if (field.key === "gstin") continue; // GSTIN is optional
+      const value = profile[field.key];
+      if (!value || !value.trim()) {
+        toast.error(`${field.label} is required`);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const res = await fetch(`${BASE_URL}/admin/addUser`, {
