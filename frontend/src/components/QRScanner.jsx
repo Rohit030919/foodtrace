@@ -3,7 +3,20 @@ import { Html5Qrcode } from 'html5-qrcode';
 
 export default function QRScanner({ onScan, onClose }) {
   const html5QrRef = useRef(null);
-  const scannedRef = useRef(false); // prevent double-fire
+  const scannedRef = useRef(false);
+  const stoppedRef = useRef(false);
+
+  const stopScanner = async () => {
+    if (stoppedRef.current) return;
+    stoppedRef.current = true;
+    try {
+      if (html5QrRef.current && html5QrRef.current.isScanning) {
+        await html5QrRef.current.stop();
+      }
+    } catch (e) {
+      // ignore — scanner may already be stopped
+    }
+  };
 
   useEffect(() => {
     const html5Qr = new Html5Qrcode("qr-reader");
@@ -12,26 +25,21 @@ export default function QRScanner({ onScan, onClose }) {
     html5Qr.start(
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 250, height: 250 } },
-      (decodedText) => {
-        // Prevent firing twice
+      async (decodedText) => {
+        // Prevent double-fire
         if (scannedRef.current) return;
         scannedRef.current = true;
 
-        // Extract batch ID — QR may contain full URL
+        // Extract batch ID — QR contains full URL
         // e.g. https://foodtrace-omega.vercel.app/batch/roh-ap1-xw3k
         let batchId = decodedText.trim();
         if (batchId.includes('/batch/')) {
-          batchId = batchId.split('/batch/').pop().split('?')[0].trim();
+          batchId = batchId.split('/batch/').pop().split('?')[0].split('#')[0].trim();
         }
 
-        // Stop scanner first, THEN update parent state
-        // This prevents html5-qrcode from interfering with React navigation
-        html5Qr.stop()
-          .catch(() => {})
-          .finally(() => {
-            onScan(batchId);
-            onClose();
-          });
+        await stopScanner();
+        onScan(batchId);
+        onClose();
       },
       () => {} // ignore per-frame errors
     ).catch((err) => {
@@ -39,17 +47,12 @@ export default function QRScanner({ onScan, onClose }) {
     });
 
     return () => {
-      // Cleanup on unmount
-      if (html5QrRef.current) {
-        html5QrRef.current.stop().catch(() => {});
-      }
+      stopScanner();
     };
   }, []);
 
-  const handleCancel = () => {
-    if (html5QrRef.current) {
-      html5QrRef.current.stop().catch(() => {});
-    }
+  const handleCancel = async () => {
+    await stopScanner();
     onClose();
   };
 
