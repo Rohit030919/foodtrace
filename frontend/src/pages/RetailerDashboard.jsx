@@ -278,6 +278,16 @@ export default function RetailerDashboard() {
                 <p className="text-slate-400 text-xs mt-1">
                   <strong className="text-white">{batchInfo.name}</strong> — Origin: {batchInfo.origin}
                 </p>
+                {batchInfo.quantity && (
+                  <p className="text-slate-400 text-xs mt-1">
+                    Farmer declared: <strong className="text-white">{batchInfo.quantity} {batchInfo.quantityUnit}</strong>
+                  </p>
+                )}
+                {batchInfo.quantityMismatch && (
+                  <div className="mt-2 flex items-center gap-2 text-red-400">
+                    <p className="text-xs">⚠️ Quantity mismatch was reported by transporter</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
