@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Truck, MapPin, CheckCircle2, Loader } from 'lucide-react';
+import { Truck, MapPin, CheckCircle2, Loader, User, Hash } from 'lucide-react';
 import { Spinner } from '../components/LoadingSpinner';
+import { useApp } from '../context/AppContext';
 
 const BASE_URL = "https://foodtrace-backend.onrender.com";
 
 export default function TransporterDashboard() {
+  const { userProfile } = useApp();
+
   const [batchId, setBatchId] = useState('');
   const [batchVerified, setBatchVerified] = useState(false);
   const [batchInfo, setBatchInfo] = useState(null);
@@ -20,7 +23,6 @@ export default function TransporterDashboard() {
   const [success, setSuccess] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
 
-  // Auto detect GPS on load
   useEffect(() => {
     detectLocation();
   }, []);
@@ -69,7 +71,6 @@ export default function TransporterDashboard() {
     );
   };
 
-  // Verify batch exists in MongoDB before allowing update
   const verifyBatch = async () => {
     if (!batchId.trim()) {
       toast.error('Please enter a Batch ID');
@@ -111,7 +112,12 @@ export default function TransporterDashboard() {
       return;
     }
 
-    const fullLocation = `${manualLocation}, ${location}`;
+    // Build full location with transporter details + GPS + checkpoint
+    const transporterDetails = userProfile
+      ? `${userProfile.transporterName} | ${userProfile.vehicleNumber} | ${userProfile.companyName}`
+      : 'Unknown Transporter';
+
+    const fullLocation = `${manualLocation}, ${location} [${transporterDetails}]`;
     setLoading(true);
 
     try {
@@ -161,6 +167,44 @@ export default function TransporterDashboard() {
         </div>
       </div>
 
+      {/* Auto-filled transporter profile card */}
+      {userProfile && (
+        <div className="glass-card p-4 mb-6 border-blue-500/20">
+          <p className="text-xs text-slate-500 mb-3 font-semibold uppercase tracking-wider">
+            Your Details (Auto-filled)
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div>
+              <p className="text-xs text-slate-500">Name</p>
+              <p className="text-sm text-white font-semibold">{userProfile.transporterName || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Vehicle No.</p>
+              <p className="text-sm text-white font-semibold">{userProfile.vehicleNumber || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Company</p>
+              <p className="text-sm text-white font-semibold">{userProfile.companyName || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Vehicle Type</p>
+              <p className="text-sm text-white font-semibold">{userProfile.vehicleType || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">License No.</p>
+              <p className="text-sm text-white font-semibold">{userProfile.licenseNumber || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Phone</p>
+              <p className="text-sm text-white font-semibold">{userProfile.transporterPhone || '—'}</p>
+            </div>
+          </div>
+          <p className="text-xs text-blue-400/70 mt-3">
+            ✅ These details are automatically attached to every batch update
+          </p>
+        </div>
+      )}
+
       {/* Status indicator */}
       <div className="glass-card p-4 mb-6 flex items-center gap-3">
         <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
@@ -201,7 +245,6 @@ export default function TransporterDashboard() {
               </button>
             </div>
 
-            {/* Verified batch info */}
             {batchVerified && batchInfo && (
               <div className="mt-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
                 <p className="text-blue-400 text-sm font-semibold">✅ Batch Verified</p>
@@ -257,6 +300,9 @@ export default function TransporterDashboard() {
                 onChange={(e) => setManualLocation(e.target.value)}
               />
             </div>
+            <p className="text-slate-600 text-xs mt-1">
+              ✏️ Only this field needs manual entry
+            </p>
           </div>
 
           <button
@@ -294,9 +340,9 @@ export default function TransporterDashboard() {
         <h3 className="font-display font-semibold text-slate-400 text-sm mb-2">🚛 Transporter Role</h3>
         <ul className="space-y-1.5 text-sm text-slate-500">
           <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">01.</span> Enter the Batch ID from the farmer's QR code and verify it</li>
-          <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">02.</span> GPS auto-detects your current region</li>
-          <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">03.</span> Enter specific checkpoint details manually</li>
-          <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">04.</span> Submit to record Stage 1 (Transport) on the blockchain</li>
+          <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">02.</span> Your vehicle and company details are auto-filled from your profile</li>
+          <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">03.</span> GPS auto-detects your current region</li>
+          <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">04.</span> Enter specific checkpoint and submit</li>
         </ul>
       </div>
     </div>

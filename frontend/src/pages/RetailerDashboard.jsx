@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Store, MapPin, CheckCircle2, Loader } from 'lucide-react';
 import { Spinner } from '../components/LoadingSpinner';
+import { useApp } from '../context/AppContext';
 
 const BASE_URL = "https://foodtrace-backend.onrender.com";
 
 export default function RetailerDashboard() {
+  const { userProfile } = useApp();
+
   const [batchId, setBatchId] = useState('');
   const [batchVerified, setBatchVerified] = useState(false);
   const [batchInfo, setBatchInfo] = useState(null);
@@ -14,7 +17,6 @@ export default function RetailerDashboard() {
   const [location, setLocation] = useState('');
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState('');
-  const [manualLocation, setManualLocation] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -101,15 +103,16 @@ export default function RetailerDashboard() {
       return;
     }
     if (!location) {
-      toast.error('GPS location is required');
+      toast.error('GPS location is required. Please allow location access.');
       return;
     }
-    if (!manualLocation.trim()) {
-      toast.error('Please enter your store name');
+    if (!userProfile) {
+      toast.error('Profile not loaded. Please logout and login again.');
       return;
     }
 
-    const fullLocation = `${manualLocation}, ${location}`;
+    // Build full location from profile + GPS — zero manual entry
+    const fullLocation = `${userProfile.shopName}, ${userProfile.shopAddress}, ${location}`;
     setLoading(true);
 
     try {
@@ -135,7 +138,6 @@ export default function RetailerDashboard() {
       setBatchId('');
       setBatchVerified(false);
       setBatchInfo(null);
-      setManualLocation('');
 
     } catch (err) {
       toast.error(err.message || 'Transaction failed');
@@ -154,10 +156,81 @@ export default function RetailerDashboard() {
           </div>
           <div>
             <h1 className="font-display font-bold text-2xl text-white">Retailer Dashboard</h1>
-            <p className="text-slate-500 text-sm">Confirm batch arrival and log your store details</p>
+            <p className="text-slate-500 text-sm">Confirm batch arrival — details auto-filled from your profile</p>
           </div>
         </div>
       </div>
+
+      {/* Auto-filled retailer profile card */}
+      {userProfile && (
+        <div className="glass-card p-4 mb-6 border-amber-500/20">
+          <p className="text-xs text-slate-500 mb-3 font-semibold uppercase tracking-wider">
+            Your Shop Details (Auto-filled)
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div>
+              <p className="text-xs text-slate-500">Shop Name</p>
+              <p className="text-sm text-white font-semibold">{userProfile.shopName || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Owner Name</p>
+              <p className="text-sm text-white font-semibold">{userProfile.retailerName || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Phone</p>
+              <p className="text-sm text-white font-semibold">{userProfile.retailerPhone || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">Address</p>
+              <p className="text-sm text-white font-semibold">{userProfile.shopAddress || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">City</p>
+              <p className="text-sm text-white font-semibold">{userProfile.city || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">State</p>
+              <p className="text-sm text-white font-semibold">{userProfile.state || '—'}</p>
+            </div>
+          </div>
+
+          {/* GPS region */}
+          <div className="mt-3 pt-3 border-t border-slate-800 flex items-center gap-2">
+            <MapPin size={13} className="text-amber-400" />
+            {locationLoading ? (
+              <span className="text-xs text-slate-500 flex items-center gap-1">
+                <Loader size={11} className="animate-spin" /> Detecting GPS location...
+              </span>
+            ) : location ? (
+              <span className="text-xs text-slate-400">
+                GPS Region: <strong className="text-white">{location}</strong>
+                <button
+                  type="button"
+                  onClick={detectLocation}
+                  className="ml-2 text-amber-400 hover:text-amber-300 text-xs"
+                >
+                  Refresh
+                </button>
+              </span>
+            ) : (
+              <span className="text-xs text-red-400">
+                {locationError || 'Location not detected'}
+                <button
+                  type="button"
+                  onClick={detectLocation}
+                  className="ml-2 text-amber-400 hover:text-amber-300"
+                >
+                  Retry
+                </button>
+              </span>
+            )}
+          </div>
+
+          <p className="text-xs text-amber-400/70 mt-2">
+            ✅ All details auto-filled — no manual entry needed
+          </p>
+        </div>
+      )}
 
       {/* Status indicator */}
       <div className="glass-card p-4 mb-6 flex items-center gap-3">
@@ -209,57 +282,10 @@ export default function RetailerDashboard() {
             )}
           </div>
 
-          {/* GPS Region - locked */}
-          <div>
-            <label className="text-sm text-slate-400 mb-1 block">
-              Current Region (Auto-detected via GPS)
-            </label>
-            <div className="relative">
-              <MapPin size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              {locationLoading && (
-                <Loader size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 animate-spin" />
-              )}
-              {!locationLoading && (
-                <button
-                  type="button"
-                  onClick={detectLocation}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-amber-400 hover:text-amber-300"
-                >
-                  {location ? 'Refresh' : 'Retry'}
-                </button>
-              )}
-              <input
-                type="text"
-                className="input-field pl-9 pr-16 w-full bg-slate-800/50 cursor-not-allowed text-slate-300"
-                placeholder={locationLoading ? "Detecting location..." : "Detecting..."}
-                value={location}
-                disabled
-                readOnly
-              />
-            </div>
-            {locationError && <p className="text-red-400 text-xs mt-1">{locationError}</p>}
-            <p className="text-slate-600 text-xs mt-1">📍 Auto-detected — cannot be changed</p>
-          </div>
-
-          {/* Manual store name */}
-          <div>
-            <label className="text-sm text-slate-400 mb-1 block">Store Name / Specific Location</label>
-            <div className="relative">
-              <Store size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                type="text"
-                className="input-field pl-9 w-full"
-                placeholder="e.g. Reliance Fresh, Baner"
-                value={manualLocation}
-                onChange={(e) => setManualLocation(e.target.value)}
-              />
-            </div>
-          </div>
-
           <button
             type="submit"
             className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold px-6 py-3 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={loading || !batchVerified || locationLoading}
+            disabled={loading || !batchVerified || locationLoading || !location}
           >
             {loading
               ? <><Spinner size="sm" color="white" /> Broadcasting Transaction…</>
@@ -290,10 +316,9 @@ export default function RetailerDashboard() {
       <div className="mt-6 glass-card p-4">
         <h3 className="font-display font-semibold text-slate-400 text-sm mb-2">🏪 Retailer Role</h3>
         <ul className="space-y-1.5 text-sm text-slate-500">
-          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">01.</span> Enter the Batch ID from the QR code and verify it</li>
-          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">02.</span> GPS auto-detects your current region</li>
-          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">03.</span> Enter your store name manually</li>
-          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">04.</span> Submit to record Stage 2 (Retail) on the blockchain</li>
+          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">01.</span> Your shop details are auto-filled from your registered profile</li>
+          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">02.</span> Enter the Batch ID from the QR code and verify it</li>
+          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">03.</span> Click Confirm — everything is recorded automatically</li>
         </ul>
       </div>
     </div>

@@ -245,6 +245,19 @@ app.post("/login", async (req, res) => {
   }
 });
 
+// GET USER PROFILE
+app.get("/getProfile/:username", async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username });
+    if (!user) {
+      return res.status(404).send("User not found");
+    }
+    res.json(user);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
 app.post("/admin/addUser", async (req, res) => {
   try {
     const { username, password, role, profile } = req.body;

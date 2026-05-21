@@ -6,7 +6,7 @@ import { ShieldCheck } from 'lucide-react';
 const BASE_URL = "https://foodtrace-backend.onrender.com";
 
 export default function LoginPage() {
-  const { setRole } = useApp();
+  const { setRole, fetchUserProfile } = useApp();
   const navigate = useNavigate();
 
   const [isRegister, setIsRegister] = useState(false);
@@ -35,6 +35,7 @@ export default function LoginPage() {
       const data = await res.json();
       setRole(data.role);
       localStorage.setItem("username", username);
+      await fetchUserProfile(username);
       navigate("/dashboard");
 
     } catch (err) {

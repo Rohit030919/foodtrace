@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useEffect } from 'react';
 
 const AppContext = createContext(null);
 
+const BASE_URL = "https://foodtrace-backend.onrender.com";
+
 export const ROLES = {
   FARMER: 'farmer',
   TRANSPORTER: 'transporter',
@@ -62,6 +64,10 @@ export function AppProvider({ children }) {
   const [role, setRole] = useState(() => localStorage.getItem('ft_role') || null);
   const [darkMode, setDarkMode] = useState(true);
   const [lastCreatedBatch, setLastCreatedBatch] = useState(null);
+  const [userProfile, setUserProfile] = useState(() => {
+    const stored = localStorage.getItem('ft_profile');
+    return stored ? JSON.parse(stored) : null;
+  });
 
   useEffect(() => {
     if (role) localStorage.setItem('ft_role', role);
@@ -69,16 +75,32 @@ export function AppProvider({ children }) {
   }, [role]);
 
   useEffect(() => {
-  if (darkMode) {
-    document.documentElement.classList.add("dark");
-  } else {
-    document.documentElement.classList.remove("dark");
-  }
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
   }, [darkMode]);
+
+  // Fetch and store user profile
+  const fetchUserProfile = async (username) => {
+    try {
+      const res = await fetch(`${BASE_URL}/getProfile/${username}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setUserProfile(data);
+      localStorage.setItem('ft_profile', JSON.stringify(data));
+    } catch (err) {
+      console.error('Failed to fetch profile:', err);
+    }
+  };
 
   const logout = () => {
     setRole(null);
     setLastCreatedBatch(null);
+    setUserProfile(null);
+    localStorage.removeItem('ft_profile');
+    localStorage.removeItem('username');
   };
 
   return (
@@ -86,6 +108,7 @@ export function AppProvider({ children }) {
       role, setRole,
       darkMode, setDarkMode,
       lastCreatedBatch, setLastCreatedBatch,
+      userProfile, setUserProfile, fetchUserProfile,
       logout,
     }}>
       {children}

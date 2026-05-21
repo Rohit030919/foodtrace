@@ -45,7 +45,7 @@ export default function QRPage() {
 
   const handleManualFetch = (e) => {
     e.preventDefault();
-    if (!inputId || isNaN(inputId)) {
+    if (!inputId || !inputId.trim()) {
       toast.error('Enter a valid Batch ID');
       return;
     }
