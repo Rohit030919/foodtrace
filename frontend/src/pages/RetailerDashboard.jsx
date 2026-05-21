@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Store, MapPin, CheckCircle2, Loader } from 'lucide-react';
+import { Store, MapPin, CheckCircle2, Loader, ScanLine, ArrowLeft } from 'lucide-react';
 import { Spinner } from '../components/LoadingSpinner';
 import { useApp } from '../context/AppContext';
+import QRScanner from '../components/QRScanner';
 
 const BASE_URL = "https://foodtrace-backend.onrender.com";
 
 export default function RetailerDashboard() {
   const { userProfile } = useApp();
+  const navigate = useNavigate();
 
+  const [showScanner, setShowScanner] = useState(false);
   const [batchId, setBatchId] = useState('');
   const [batchVerified, setBatchVerified] = useState(false);
   const [batchInfo, setBatchInfo] = useState(null);
@@ -111,7 +115,6 @@ export default function RetailerDashboard() {
       return;
     }
 
-    // Build full location from profile + GPS — zero manual entry
     const fullLocation = `${userProfile.shopName}, ${userProfile.shopAddress}, ${location}`;
     setLoading(true);
 
@@ -148,6 +151,15 @@ export default function RetailerDashboard() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
+
+      {/* Back button */}
+      <button
+        onClick={() => navigate('/dashboard')}
+        className="flex items-center gap-1.5 text-slate-500 hover:text-slate-300 transition-colors mb-6 text-sm"
+      >
+        <ArrowLeft size={15} /> Back to Dashboard
+      </button>
+
       {/* Header */}
       <div className="mb-8 page-enter">
         <div className="flex items-center gap-3 mb-2">
@@ -204,31 +216,20 @@ export default function RetailerDashboard() {
             ) : location ? (
               <span className="text-xs text-slate-400">
                 GPS Region: <strong className="text-white">{location}</strong>
-                <button
-                  type="button"
-                  onClick={detectLocation}
-                  className="ml-2 text-amber-400 hover:text-amber-300 text-xs"
-                >
+                <button type="button" onClick={detectLocation} className="ml-2 text-amber-400 hover:text-amber-300 text-xs">
                   Refresh
                 </button>
               </span>
             ) : (
               <span className="text-xs text-red-400">
                 {locationError || 'Location not detected'}
-                <button
-                  type="button"
-                  onClick={detectLocation}
-                  className="ml-2 text-amber-400 hover:text-amber-300"
-                >
+                <button type="button" onClick={detectLocation} className="ml-2 text-amber-400 hover:text-amber-300">
                   Retry
                 </button>
               </span>
             )}
           </div>
-
-          <p className="text-xs text-amber-400/70 mt-2">
-            ✅ All details auto-filled — no manual entry needed
-          </p>
+          <p className="text-xs text-amber-400/70 mt-2">✅ All details auto-filled — no manual entry needed</p>
         </div>
       )}
 
@@ -247,14 +248,14 @@ export default function RetailerDashboard() {
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* Batch ID + Verify */}
+          {/* Batch ID + Scan + Verify */}
           <div>
             <label className="text-sm text-slate-400 mb-1 block">Batch ID</label>
             <div className="flex gap-2">
               <input
                 type="text"
                 className="input-field flex-1"
-                placeholder="e.g. roh-ap1-xw3k"
+                placeholder="Scan QR or type ID"
                 value={batchId}
                 onChange={(e) => {
                   setBatchId(e.target.value);
@@ -262,6 +263,14 @@ export default function RetailerDashboard() {
                   setBatchInfo(null);
                 }}
               />
+              {/* Scan QR button */}
+              <button
+                type="button"
+                onClick={() => setShowScanner(true)}
+                className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-semibold transition-colors flex items-center gap-1"
+              >
+                <ScanLine size={16} /> Scan
+              </button>
               <button
                 type="button"
                 onClick={verifyBatch}
@@ -317,10 +326,23 @@ export default function RetailerDashboard() {
         <h3 className="font-display font-semibold text-slate-400 text-sm mb-2">🏪 Retailer Role</h3>
         <ul className="space-y-1.5 text-sm text-slate-500">
           <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">01.</span> Your shop details are auto-filled from your registered profile</li>
-          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">02.</span> Enter the Batch ID from the QR code and verify it</li>
+          <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">02.</span> Scan the QR code or enter Batch ID manually and verify</li>
           <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">03.</span> Click Confirm — everything is recorded automatically</li>
         </ul>
       </div>
+
+      {/* QR Scanner Modal */}
+      {showScanner && (
+        <QRScanner
+          onScan={(scannedId) => {
+            setBatchId(scannedId);
+            setBatchVerified(false);
+            setBatchInfo(null);
+          }}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
+
     </div>
   );
 }

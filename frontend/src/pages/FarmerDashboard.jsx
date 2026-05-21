@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Sprout, QrCode, CheckCircle2, MapPin, Tag, Loader } from 'lucide-react';
+import { Sprout, QrCode, CheckCircle2, MapPin, Tag, Loader, ArrowLeft } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const BASE_URL = "https://foodtrace-backend.onrender.com";
@@ -10,18 +10,16 @@ export default function FarmerDashboard() {
   const { setLastCreatedBatch } = useApp();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ name: '' });
+  const [form, setForm] = useState({ name: '', farmAddress: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [created, setCreated] = useState(null);
 
-  // GPS state
   const [location, setLocation] = useState('');
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState('');
 
-  // Auto-detect location on page load
   useEffect(() => {
     detectLocation();
   }, []);
@@ -41,25 +39,18 @@ export default function FarmerDashboard() {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-
-          // Reverse geocode using OpenStreetMap (free, no API key)
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
           );
           const data = await res.json();
-
-          // Build readable location string
           const addr = data.address;
           const parts = [
             addr.village || addr.town || addr.city || addr.suburb,
             addr.district || addr.county,
             addr.state,
           ].filter(Boolean);
-
-          const readableLocation = parts.join(', ');
-          setLocation(readableLocation);
-
-        } catch (err) {
+          setLocation(parts.join(', '));
+        } catch {
           setLocationError('Could not convert GPS to address. Try again.');
         } finally {
           setLocationLoading(false);
@@ -94,8 +85,6 @@ export default function FarmerDashboard() {
 
     try {
       const farmerUsername = localStorage.getItem("username");
-
-      // Combine GPS region + manual address
       const fullOrigin = `${form.farmAddress}, ${location}`;
 
       const res = await fetch(`${BASE_URL}/createBatch`, {
@@ -115,7 +104,6 @@ export default function FarmerDashboard() {
       }
 
       const data = await res.json();
-
       setCreated({ name: form.name, origin: fullOrigin, id: data.stringId });
       setLastCreatedBatch({ name: form.name, origin: fullOrigin, id: data.stringId });
       setSuccess(true);
@@ -136,6 +124,15 @@ export default function FarmerDashboard() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
+
+      {/* Back button */}
+      <button
+        onClick={() => navigate('/dashboard')}
+        className="flex items-center gap-1.5 text-slate-500 hover:text-slate-300 transition-colors mb-6 text-sm"
+      >
+        <ArrowLeft size={15} /> Back to Dashboard
+      </button>
+
       {/* Header */}
       <div className="mb-8 page-enter">
         <div className="flex items-center gap-3 mb-2">
@@ -174,8 +171,7 @@ export default function FarmerDashboard() {
               {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
             </div>
 
-            
-            {/* GPS Region - Auto detected, read only */}
+            {/* GPS Region */}
             <div>
               <label className="text-sm text-slate-400 mb-1 block">
                 Region (Auto-detected via GPS)
@@ -203,19 +199,14 @@ export default function FarmerDashboard() {
                   readOnly
                 />
               </div>
-              {locationError && (
-                <p className="text-red-400 text-xs mt-1">{locationError}</p>
-              )}
-              <p className="text-slate-600 text-xs mt-1">
-                📍 Auto-detected — cannot be changed
-              </p>
+              {locationError && <p className="text-red-400 text-xs mt-1">{locationError}</p>}
+              {errors.location && !locationError && <p className="text-red-400 text-xs mt-1">{errors.location}</p>}
+              <p className="text-slate-600 text-xs mt-1">📍 Auto-detected — cannot be changed</p>
             </div>
 
-            {/* Manual specific address */}
+            {/* Manual Farm Address */}
             <div>
-              <label className="text-sm text-slate-400 mb-1 block">
-                Specific Farm Address
-              </label>
+              <label className="text-sm text-slate-400 mb-1 block">Specific Farm Address</label>
               <div className="relative">
                 <MapPin size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
@@ -226,12 +217,8 @@ export default function FarmerDashboard() {
                   onChange={change('farmAddress')}
                 />
               </div>
-              {errors.farmAddress && (
-                <p className="text-red-400 text-xs mt-1">{errors.farmAddress}</p>
-              )}
-              <p className="text-slate-600 text-xs mt-1">
-                ✏️ Enter your specific farm address manually
-              </p>
+              {errors.farmAddress && <p className="text-red-400 text-xs mt-1">{errors.farmAddress}</p>}
+              <p className="text-slate-600 text-xs mt-1">✏️ Enter your specific farm address manually</p>
             </div>
 
             <button
@@ -258,27 +245,17 @@ export default function FarmerDashboard() {
                 <h3 className="font-display font-bold text-brand-400 text-lg">
                   Batch Registered Successfully!
                 </h3>
-                <p className="text-slate-400 text-sm mt-1 mb-1">
-                  Your batch ID is:
-                </p>
-                <p className="text-white font-mono text-lg font-bold mb-4">
-                  {created.id}
-                </p>
+                <p className="text-slate-400 text-sm mt-1 mb-1">Your batch ID is:</p>
+                <p className="text-white font-mono text-lg font-bold mb-4">{created.id}</p>
                 <p className="text-slate-400 text-sm mb-4">
                   <strong className="text-white">{created.name}</strong> from{' '}
                   <strong className="text-white">{created.origin}</strong> is now live on-chain.
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  <button
-                    className="btn-amber"
-                    onClick={() => navigate(`/qr/${created.id}`)}
-                  >
+                  <button className="btn-amber" onClick={() => navigate(`/qr/${created.id}`)}>
                     <QrCode size={16} className="inline mr-2" /> Generate QR Code
                   </button>
-                  <button
-                    className="btn-secondary"
-                    onClick={() => navigate(`/batch/${created.id}`)}
-                  >
+                  <button className="btn-secondary" onClick={() => navigate(`/batch/${created.id}`)}>
                     View Tracking Page
                   </button>
                 </div>
@@ -293,7 +270,7 @@ export default function FarmerDashboard() {
         <h3 className="font-display font-semibold text-slate-400 text-sm mb-2">📋 How it works</h3>
         <ul className="space-y-1.5 text-sm text-slate-500">
           <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">01.</span> Allow GPS access when prompted</li>
-          <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">02.</span> Enter your product name</li>
+          <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">02.</span> Enter your product name and specific farm address</li>
           <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">03.</span> A unique Batch ID is auto-generated for you</li>
           <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">04.</span> The batch is signed and written to the blockchain</li>
           <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">05.</span> Generate a QR code to share with transporters and retailers</li>

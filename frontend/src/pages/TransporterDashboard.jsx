@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Truck, MapPin, CheckCircle2, Loader, User, Hash } from 'lucide-react';
+import { Truck, MapPin, CheckCircle2, Loader, ScanLine, ArrowLeft } from 'lucide-react';
 import { Spinner } from '../components/LoadingSpinner';
 import { useApp } from '../context/AppContext';
+import QRScanner from '../components/QRScanner';
+import { useNavigate } from 'react-router-dom';
 
 const BASE_URL = "https://foodtrace-backend.onrender.com";
 
 export default function TransporterDashboard() {
   const { userProfile } = useApp();
-
+  const navigate = useNavigate();
   const [batchId, setBatchId] = useState('');
   const [batchVerified, setBatchVerified] = useState(false);
   const [batchInfo, setBatchInfo] = useState(null);
@@ -22,6 +24,7 @@ export default function TransporterDashboard() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
+  const [showScanner, setShowScanner] = useState(false);
 
   useEffect(() => {
     detectLocation();
@@ -154,6 +157,15 @@ export default function TransporterDashboard() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
+
+      {/* Back button */}
+      <button
+        onClick={() => navigate('/dashboard')}
+        className="flex items-center gap-1.5 text-slate-500 hover:text-slate-300 transition-colors mb-6 text-sm"
+      >
+        <ArrowLeft size={15} /> Back to Dashboard
+      </button>
+
       {/* Header */}
       <div className="mb-8 page-enter">
         <div className="flex items-center gap-3 mb-2">
@@ -220,14 +232,14 @@ export default function TransporterDashboard() {
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* Batch ID + Verify */}
+          {/* Batch ID + Scan + Verify */}
           <div>
             <label className="text-sm text-slate-400 mb-1 block">Batch ID</label>
             <div className="flex gap-2">
               <input
                 type="text"
                 className="input-field flex-1"
-                placeholder="e.g. roh-ap1-xw3k"
+                placeholder="Scan QR or type ID"
                 value={batchId}
                 onChange={(e) => {
                   setBatchId(e.target.value);
@@ -235,6 +247,14 @@ export default function TransporterDashboard() {
                   setBatchInfo(null);
                 }}
               />
+              {/* Scan QR button */}
+              <button
+                type="button"
+                onClick={() => setShowScanner(true)}
+                className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-semibold transition-colors flex items-center gap-1"
+              >
+                <ScanLine size={16} /> Scan
+              </button>
               <button
                 type="button"
                 onClick={verifyBatch}
@@ -345,6 +365,18 @@ export default function TransporterDashboard() {
           <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">04.</span> Enter specific checkpoint and submit</li>
         </ul>
       </div>
+{/* QR Scanner Modal */}
+      {showScanner && (
+        <QRScanner
+          onScan={(scannedId) => {
+            setBatchId(scannedId);
+            setBatchVerified(false);
+            setBatchInfo(null);
+          }}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
+
     </div>
   );
 }
