@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 
 export default function QRScanner({ onScan, onClose }) {
-  const scannerRef = useRef(null);
   const html5QrRef = useRef(null);
+  const scannedRef = useRef(false); // prevent double-fire
 
   useEffect(() => {
     const html5Qr = new Html5Qrcode("qr-reader");
@@ -13,27 +13,45 @@ export default function QRScanner({ onScan, onClose }) {
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 250, height: 250 } },
       (decodedText) => {
-        // Extract batch ID from URL if QR contains full URL
+        // Prevent firing twice
+        if (scannedRef.current) return;
+        scannedRef.current = true;
+
+        // Extract batch ID — QR may contain full URL
         // e.g. https://foodtrace-omega.vercel.app/batch/roh-ap1-xw3k
-        let batchId = decodedText;
-        if (decodedText.includes('/batch/')) {
-          batchId = decodedText.split('/batch/')[1];
+        let batchId = decodedText.trim();
+        if (batchId.includes('/batch/')) {
+          batchId = batchId.split('/batch/').pop().split('?')[0].trim();
         }
-        onScan(batchId);
-        html5Qr.stop().catch(() => {});
-        onClose();
+
+        // Stop scanner first, THEN update parent state
+        // This prevents html5-qrcode from interfering with React navigation
+        html5Qr.stop()
+          .catch(() => {})
+          .finally(() => {
+            onScan(batchId);
+            onClose();
+          });
       },
-      () => {} // ignore frame errors
+      () => {} // ignore per-frame errors
     ).catch((err) => {
       console.error("QR start error:", err);
     });
 
     return () => {
+      // Cleanup on unmount
       if (html5QrRef.current) {
         html5QrRef.current.stop().catch(() => {});
       }
     };
   }, []);
+
+  const handleCancel = () => {
+    if (html5QrRef.current) {
+      html5QrRef.current.stop().catch(() => {});
+    }
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -41,12 +59,7 @@ export default function QRScanner({ onScan, onClose }) {
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-display font-bold text-white">Scan Batch QR</h3>
           <button
-            onClick={() => {
-              if (html5QrRef.current) {
-                html5QrRef.current.stop().catch(() => {});
-              }
-              onClose();
-            }}
+            onClick={handleCancel}
             className="text-slate-400 hover:text-white text-sm px-3 py-1 rounded-lg hover:bg-slate-800 transition-colors"
           >
             Cancel
