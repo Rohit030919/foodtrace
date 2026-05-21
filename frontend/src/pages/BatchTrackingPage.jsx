@@ -123,7 +123,65 @@ export default function BatchTrackingPage() {
                       ⚠️ Quantity Mismatch
                     </span>
                   )}
+              </div>
+
+              {/* Quantity info */}
+              {batchInfo.quantity && (
+                <div className="mt-3 pt-3 border-t border-slate-800">
+                  <div className="flex flex-wrap gap-4">
+                    <div>
+                      <p className="text-xs text-slate-500">Farmer Declared</p>
+                      <p className="text-sm font-semibold text-white">
+                        {batchInfo.quantity} {batchInfo.quantityUnit}
+                      </p>
+                    </div>
+                    {batchInfo.transporterQuantityReceived && (
+                      <div>
+                        <p className="text-xs text-slate-500">Transporter Received</p>
+                        <p className={`text-sm font-semibold ${batchInfo.quantityMismatch ? 'text-red-400' : 'text-brand-400'}`}>
+                          {batchInfo.transporterQuantityReceived} {batchInfo.quantityUnit}
+                          {batchInfo.quantityMismatch ? ' ⚠️' : ' ✅'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {batchInfo.quantityMismatch && (
+                    <p className="text-red-400 text-xs mt-2">
+                      ⚠️ Quantity mismatch detected during transport. {Number(batchInfo.quantity) - Number(batchInfo.transporterQuantityReceived)} {batchInfo.quantityUnit} unaccounted for.
+                    </p>
+                  )}
                 </div>
+              )}
+              </div>
+
+              {/* Quantity info */}
+              {batchInfo.quantity && (
+                <div className="mt-3 pt-3 border-t border-slate-800">
+                  <div className="flex flex-wrap gap-4">
+                    <div>
+                      <p className="text-xs text-slate-500">Farmer Declared</p>
+                      <p className="text-sm font-semibold text-white">
+                        {batchInfo.quantity} {batchInfo.quantityUnit}
+                      </p>
+                    </div>
+                    {batchInfo.transporterQuantityReceived && (
+                      <div>
+                        <p className="text-xs text-slate-500">Transporter Received</p>
+                        <p className={`text-sm font-semibold ${batchInfo.quantityMismatch ? 'text-red-400' : 'text-brand-400'}`}>
+                          {batchInfo.transporterQuantityReceived} {batchInfo.quantityUnit}
+                          {batchInfo.quantityMismatch ? ' ⚠️' : ' ✅'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {batchInfo.quantityMismatch && (
+                    <p className="text-red-400 text-xs mt-2">
+                      ⚠️ Quantity mismatch detected during transport. {Number(batchInfo.quantity) - Number(batchInfo.transporterQuantityReceived)} {batchInfo.quantityUnit} unaccounted for.
+                    </p>
+                  )}
+                </div>
+              )}
+
                 <h2 className="font-display font-bold text-2xl text-white mt-1">
                   {batchInfo.name || batchInfo[1] || 'Unknown Product'}
                 </h2>
@@ -138,7 +196,6 @@ export default function BatchTrackingPage() {
                     Current owner: {(batchInfo.currentOwner || batchInfo[3])?.slice(0, 20)}…
                   </p>
                 )}
-              </div>
               <div className="flex flex-col justify-center items-start sm:items-end">
                 <p className="text-slate-500 text-xs mb-1">Journey progress</p>
                 <p className={`font-display font-bold text-4xl ${
