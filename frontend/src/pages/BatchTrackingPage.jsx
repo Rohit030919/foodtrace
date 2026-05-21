@@ -118,6 +118,11 @@ export default function BatchTrackingPage() {
                       ✅ Full Journey
                     </span>
                   )}
+                  {batchInfo.quantityMismatch && (
+                    <span className="badge bg-red-500/10 text-red-400 border border-red-500/30">
+                      ⚠️ Quantity Mismatch
+                    </span>
+                  )}
                 </div>
                 <h2 className="font-display font-bold text-2xl text-white mt-1">
                   {batchInfo.name || batchInfo[1] || 'Unknown Product'}

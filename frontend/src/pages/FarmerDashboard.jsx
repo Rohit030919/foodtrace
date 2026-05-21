@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Sprout, QrCode, CheckCircle2, MapPin, Tag, Loader } from 'lucide-react';
+import { Sprout, QrCode, CheckCircle2, MapPin, Tag, Loader, Package, Truck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const BASE_URL = "https://foodtrace-backend.onrender.com";
@@ -10,7 +10,13 @@ export default function FarmerDashboard() {
   const { setLastCreatedBatch } = useApp();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ name: '', farmAddress: '' });
+  const [form, setForm] = useState({
+    name: '',
+    farmAddress: '',
+    quantity: '',
+    quantityUnit: 'kg',
+    assignedTransporter: '',
+  });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -20,9 +26,24 @@ export default function FarmerDashboard() {
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState('');
 
+  const [transporters, setTransporters] = useState([]);
+
   useEffect(() => {
     detectLocation();
+    fetchTransporters();
   }, []);
+
+  const fetchTransporters = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/getTransporters`);
+      if (res.ok) {
+        const data = await res.json();
+        setTransporters(data);
+      }
+    } catch {
+      // silently fail — transporter assignment becomes optional
+    }
+  };
 
   const detectLocation = () => {
     setLocationLoading(true);
@@ -73,6 +94,8 @@ export default function FarmerDashboard() {
     if (!form.name.trim()) errs.name = 'Product name is required';
     if (!location) errs.location = 'Location is required. Please allow GPS access.';
     if (!form.farmAddress || !form.farmAddress.trim()) errs.farmAddress = 'Specific farm address is required';
+    if (!form.quantity || isNaN(form.quantity) || Number(form.quantity) <= 0)
+      errs.quantity = 'Valid quantity is required';
     return errs;
   };
 
@@ -93,7 +116,10 @@ export default function FarmerDashboard() {
         body: JSON.stringify({
           name: form.name,
           origin: fullOrigin,
-          farmerUsername
+          farmerUsername,
+          quantity: Number(form.quantity),
+          quantityUnit: form.quantityUnit,
+          assignedTransporter: form.assignedTransporter || null,
         })
       });
 
@@ -108,7 +134,7 @@ export default function FarmerDashboard() {
       setLastCreatedBatch({ name: form.name, origin: fullOrigin, id: data.stringId });
       setSuccess(true);
       toast.success(`Batch ${data.stringId} created on-chain! 🌿`);
-      setForm({ name: '', farmAddress: '' });
+      setForm({ name: '', farmAddress: '', quantity: '', quantityUnit: 'kg', assignedTransporter: '' });
 
     } catch (err) {
       toast.error(err.message || 'Transaction failed');
@@ -125,7 +151,6 @@ export default function FarmerDashboard() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
 
-
       {/* Header */}
       <div className="mb-8 page-enter">
         <div className="flex items-center gap-3 mb-2">
@@ -140,7 +165,6 @@ export default function FarmerDashboard() {
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">
-        {/* Form card */}
         <div className="sm:col-span-2 glass-card p-6">
           <h2 className="font-display font-semibold text-lg text-white mb-5 flex items-center gap-2">
             <span className="w-1.5 h-5 rounded-full bg-brand-500 inline-block" />
@@ -162,6 +186,37 @@ export default function FarmerDashboard() {
                 />
               </div>
               {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
+            </div>
+
+            {/* Quantity + Unit */}
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">Quantity</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Package size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="number"
+                    className={`input-field pl-9 w-full ${errors.quantity ? 'border-red-500' : ''}`}
+                    placeholder="e.g. 50"
+                    value={form.quantity}
+                    onChange={change('quantity')}
+                    min="0"
+                  />
+                </div>
+                <select
+                  className="input-field w-24"
+                  value={form.quantityUnit}
+                  onChange={change('quantityUnit')}
+                >
+                  <option value="kg">kg</option>
+                  <option value="tonnes">tonnes</option>
+                  <option value="pieces">pieces</option>
+                  <option value="boxes">boxes</option>
+                  <option value="crates">crates</option>
+                </select>
+              </div>
+              {errors.quantity && <p className="text-red-400 text-xs mt-1">{errors.quantity}</p>}
+              <p className="text-slate-600 text-xs mt-1">📦 Transporter will verify this quantity on pickup</p>
             </div>
 
             {/* GPS Region */}
@@ -214,6 +269,33 @@ export default function FarmerDashboard() {
               <p className="text-slate-600 text-xs mt-1">✏️ Enter your specific farm address manually</p>
             </div>
 
+            {/* Assign Transporter */}
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">
+                Assign Transporter <span className="text-slate-600">(optional)</span>
+              </label>
+              <div className="relative">
+                <Truck size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <select
+                  className="input-field pl-9 w-full"
+                  value={form.assignedTransporter}
+                  onChange={change('assignedTransporter')}
+                >
+                  <option value="">— No transporter assigned yet —</option>
+                  {transporters.map((t) => (
+                    <option key={t.username} value={t.username}>
+                      {t.transporterName || t.username}
+                      {t.vehicleNumber ? ` | ${t.vehicleNumber}` : ''}
+                      {t.companyName ? ` | ${t.companyName}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-slate-600 text-xs mt-1">
+                🚛 Assigned transporter will see a notification on their dashboard
+              </p>
+            </div>
+
             <button
               type="submit"
               className="btn-primary w-full mt-2"
@@ -263,10 +345,10 @@ export default function FarmerDashboard() {
         <h3 className="font-display font-semibold text-slate-400 text-sm mb-2">📋 How it works</h3>
         <ul className="space-y-1.5 text-sm text-slate-500">
           <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">01.</span> Allow GPS access when prompted</li>
-          <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">02.</span> Enter your product name and specific farm address</li>
-          <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">03.</span> A unique Batch ID is auto-generated for you</li>
-          <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">04.</span> The batch is signed and written to the blockchain</li>
-          <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">05.</span> Generate a QR code to share with transporters and retailers</li>
+          <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">02.</span> Enter product name, quantity and farm address</li>
+          <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">03.</span> Optionally assign a transporter for this batch</li>
+          <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">04.</span> A unique Batch ID is auto-generated for you</li>
+          <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">05.</span> Generate a QR code to share with your transporter</li>
         </ul>
       </div>
     </div>

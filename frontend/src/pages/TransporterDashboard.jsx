@@ -1,20 +1,23 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Truck, MapPin, CheckCircle2, Loader, ScanLine } from 'lucide-react';
+import { Truck, MapPin, CheckCircle2, Loader, ScanLine, Package, AlertTriangle } from 'lucide-react';
 import { Spinner } from '../components/LoadingSpinner';
 import { useApp } from '../context/AppContext';
 import QRScanner from '../components/QRScanner';
-import { useNavigate } from 'react-router-dom';
 
 const BASE_URL = "https://foodtrace-backend.onrender.com";
 
 export default function TransporterDashboard() {
   const { userProfile } = useApp();
-  const navigate = useNavigate();
+  const transporterUsername = localStorage.getItem("username") || "";
+
   const [batchId, setBatchId] = useState('');
   const [batchVerified, setBatchVerified] = useState(false);
   const [batchInfo, setBatchInfo] = useState(null);
   const [verifying, setVerifying] = useState(false);
+
+  const [receivedQuantity, setReceivedQuantity] = useState('');
+  const [custodyResult, setCustodyResult] = useState(null);
 
   const [location, setLocation] = useState('');
   const [locationLoading, setLocationLoading] = useState(false);
@@ -91,6 +94,8 @@ export default function TransporterDashboard() {
       const data = await res.json();
       setBatchInfo(data);
       setBatchVerified(true);
+      // Pre-fill received quantity with farmer's declared quantity
+      setReceivedQuantity(data.quantity ? String(data.quantity) : '');
       toast.success('Batch verified ✅');
     } catch {
       toast.error('Error verifying batch');
@@ -114,16 +119,40 @@ export default function TransporterDashboard() {
       toast.error('Please enter specific checkpoint location');
       return;
     }
+    if (batchInfo.quantity && (!receivedQuantity || isNaN(receivedQuantity))) {
+      toast.error('Please enter the quantity you received');
+      return;
+    }
 
-    // Build full location with transporter details + GPS + checkpoint
-    const transporterDetails = userProfile
-      ? `${userProfile.transporterName} | ${userProfile.vehicleNumber} | ${userProfile.companyName}`
-      : 'Unknown Transporter';
-
-    const fullLocation = `${manualLocation}, ${location} [${transporterDetails}]`;
     setLoading(true);
 
     try {
+      // Step 1 — Confirm custody with quantity check
+      let mismatch = false;
+      if (batchInfo.quantity) {
+        const custodyRes = await fetch(`${BASE_URL}/confirmCustody`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            batchId: batchId.trim(),
+            receivedQuantity: Number(receivedQuantity),
+          })
+        });
+        if (custodyRes.ok) {
+          const custodyData = await custodyRes.json();
+          mismatch = custodyData.mismatch;
+          setCustodyResult(custodyData);
+        }
+      }
+
+      // Step 2 — Build full location with transporter details
+      const transporterDetails = userProfile
+        ? `${userProfile.transporterName} | ${userProfile.vehicleNumber} | ${userProfile.companyName}`
+        : 'Unknown Transporter';
+
+      const fullLocation = `${manualLocation}, ${location} [${transporterDetails}]`;
+
+      // Step 3 — Update batch on blockchain
       const res = await fetch(`${BASE_URL}/updateBatch`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -140,13 +169,21 @@ export default function TransporterDashboard() {
         return;
       }
 
-      setLastUpdate({ id: batchId, location: fullLocation });
+      setLastUpdate({ id: batchId, location: fullLocation, mismatch });
       setSuccess(true);
-      toast.success(`Transport update recorded for Batch ${batchId} 🚛`);
+
+      if (mismatch) {
+        toast.error(`⚠️ Quantity mismatch flagged! Farmer sent ${batchInfo.quantity} ${batchInfo.quantityUnit}, you received ${receivedQuantity} ${batchInfo.quantityUnit}`);
+      } else {
+        toast.success(`Transport update recorded for Batch ${batchId} 🚛`);
+      }
+
       setBatchId('');
       setBatchVerified(false);
       setBatchInfo(null);
       setManualLocation('');
+      setReceivedQuantity('');
+      setCustodyResult(null);
 
     } catch (err) {
       toast.error(err.message || 'Transaction failed');
@@ -155,10 +192,13 @@ export default function TransporterDashboard() {
     }
   };
 
+  // Check if this transporter is the assigned one
+  const isAssignedTransporter = batchInfo?.assignedTransporter
+    ? batchInfo.assignedTransporter === transporterUsername.toLowerCase()
+    : true;
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
-
-
 
       {/* Header */}
       <div className="mb-8 page-enter">
@@ -239,9 +279,9 @@ export default function TransporterDashboard() {
                   setBatchId(e.target.value);
                   setBatchVerified(false);
                   setBatchInfo(null);
+                  setReceivedQuantity('');
                 }}
               />
-              {/* Scan QR button */}
               <button
                 type="button"
                 onClick={() => setShowScanner(true)}
@@ -259,15 +299,57 @@ export default function TransporterDashboard() {
               </button>
             </div>
 
+            {/* Verified batch info */}
             {batchVerified && batchInfo && (
               <div className="mt-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
                 <p className="text-blue-400 text-sm font-semibold">✅ Batch Verified</p>
                 <p className="text-slate-400 text-xs mt-1">
                   <strong className="text-white">{batchInfo.name}</strong> — Origin: {batchInfo.origin}
                 </p>
+                {batchInfo.quantity && (
+                  <p className="text-slate-400 text-xs mt-1">
+                    Farmer declared: <strong className="text-white">{batchInfo.quantity} {batchInfo.quantityUnit}</strong>
+                  </p>
+                )}
+                {/* Assigned transporter warning */}
+                {batchInfo.assignedTransporter && !isAssignedTransporter && (
+                  <div className="mt-2 flex items-center gap-2 text-amber-400">
+                    <AlertTriangle size={13} />
+                    <p className="text-xs">This batch is assigned to a different transporter</p>
+                  </div>
+                )}
+                {batchInfo.assignedTransporter && isAssignedTransporter && (
+                  <p className="text-xs text-brand-400 mt-1">✅ You are the assigned transporter for this batch</p>
+                )}
               </div>
             )}
           </div>
+
+          {/* Quantity received — only shown after batch verified and farmer set a quantity */}
+          {batchVerified && batchInfo?.quantity && (
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">
+                Quantity Received
+              </label>
+              <div className="flex gap-2 items-center">
+                <div className="relative flex-1">
+                  <Package size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="number"
+                    className="input-field pl-9 w-full"
+                    placeholder="Enter quantity you received"
+                    value={receivedQuantity}
+                    onChange={(e) => setReceivedQuantity(e.target.value)}
+                    min="0"
+                  />
+                </div>
+                <span className="text-slate-400 text-sm flex-shrink-0">{batchInfo.quantityUnit}</span>
+              </div>
+              <p className="text-slate-600 text-xs mt-1">
+                📦 Farmer declared <strong className="text-slate-400">{batchInfo.quantity} {batchInfo.quantityUnit}</strong> — enter what you actually received
+              </p>
+            </div>
+          )}
 
           {/* GPS Region - locked */}
           <div>
@@ -314,9 +396,7 @@ export default function TransporterDashboard() {
                 onChange={(e) => setManualLocation(e.target.value)}
               />
             </div>
-            <p className="text-slate-600 text-xs mt-1">
-              ✏️ Only this field needs manual entry
-            </p>
+            <p className="text-slate-600 text-xs mt-1">✏️ Only this field needs manual entry</p>
           </div>
 
           <button
@@ -333,13 +413,30 @@ export default function TransporterDashboard() {
 
       {/* Success */}
       {success && lastUpdate && (
-        <div className="mt-6 glass-card border-blue-500/30 p-6 page-enter">
+        <div className={`mt-6 glass-card p-6 page-enter ${lastUpdate.mismatch ? 'border-red-500/30' : 'border-blue-500/30'}`}>
           <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-              <CheckCircle2 className="text-blue-400" size={20} />
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${lastUpdate.mismatch ? 'bg-red-500/20' : 'bg-blue-500/20'}`}>
+              {lastUpdate.mismatch
+                ? <AlertTriangle className="text-red-400" size={20} />
+                : <CheckCircle2 className="text-blue-400" size={20} />
+              }
             </div>
             <div>
-              <h3 className="font-display font-bold text-blue-400 text-lg">Transport Logged!</h3>
+              <h3 className={`font-display font-bold text-lg ${lastUpdate.mismatch ? 'text-red-400' : 'text-blue-400'}`}>
+                {lastUpdate.mismatch ? '⚠️ Mismatch Flagged — Transport Logged' : 'Transport Logged!'}
+              </h3>
+              {lastUpdate.mismatch && custodyResult && (
+                <div className="mt-2 mb-3 p-2 rounded-lg bg-red-500/10 border border-red-500/20">
+                  <p className="text-red-400 text-xs font-semibold">Quantity Mismatch Detected</p>
+                  <p className="text-slate-400 text-xs mt-1">
+                    Farmer declared: <strong className="text-white">{custodyResult.farmerQuantity} {custodyResult.quantityUnit}</strong>
+                  </p>
+                  <p className="text-slate-400 text-xs">
+                    You received: <strong className="text-white">{custodyResult.receivedQuantity} {custodyResult.quantityUnit}</strong>
+                  </p>
+                  <p className="text-red-400 text-xs mt-1">This mismatch is recorded and visible to consumers on the tracking page.</p>
+                </div>
+              )}
               <p className="text-slate-400 text-sm mt-1">
                 Batch <strong className="text-white">{lastUpdate.id}</strong> recorded at{' '}
                 <strong className="text-white">{lastUpdate.location}</strong>
@@ -353,19 +450,21 @@ export default function TransporterDashboard() {
       <div className="mt-6 glass-card p-4">
         <h3 className="font-display font-semibold text-slate-400 text-sm mb-2">🚛 Transporter Role</h3>
         <ul className="space-y-1.5 text-sm text-slate-500">
-          <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">01.</span> Enter the Batch ID from the farmer's QR code and verify it</li>
-          <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">02.</span> Your vehicle and company details are auto-filled from your profile</li>
-          <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">03.</span> GPS auto-detects your current region</li>
-          <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">04.</span> Enter specific checkpoint and submit</li>
+          <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">01.</span> Scan QR or enter Batch ID and verify</li>
+          <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">02.</span> Enter quantity you physically received — must match farmer's declared amount</li>
+          <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">03.</span> Your vehicle and company details are auto-filled from your profile</li>
+          <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">04.</span> GPS auto-detects your current region — enter specific checkpoint and submit</li>
         </ul>
       </div>
-{/* QR Scanner Modal */}
+
+      {/* QR Scanner Modal */}
       {showScanner && (
         <QRScanner
           onScan={(scannedId) => {
             setBatchId(scannedId);
             setBatchVerified(false);
             setBatchInfo(null);
+            setReceivedQuantity('');
           }}
           onClose={() => setShowScanner(false)}
         />

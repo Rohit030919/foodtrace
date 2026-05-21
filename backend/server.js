@@ -49,7 +49,7 @@ function generateBatchId(farmerUsername, productName, count) {
 // CREATE BATCH (auto ID generation)
 app.post("/createBatch", async (req, res) => {
   try {
-    const { name, origin, farmerUsername } = req.body;
+    const { name, origin, farmerUsername, quantity, quantityUnit, assignedTransporter } = req.body;
 
     if (!name || !origin || !farmerUsername) {
       return res.status(400).send("Name, origin and farmerUsername are required");
@@ -74,7 +74,10 @@ app.post("/createBatch", async (req, res) => {
       stringId,
       numericId,
       farmerUsername: farmerUsername.toLowerCase(),
-      productName: name.toLowerCase().replace(/\s+/g, '')
+      productName: name.toLowerCase().replace(/\s+/g, ''),
+      quantity: quantity ? Number(quantity) : null,
+      quantityUnit: quantityUnit || 'kg',
+      assignedTransporter: assignedTransporter ? assignedTransporter.toLowerCase() : null,
     });
     await newBatch.save();
 
@@ -135,7 +138,14 @@ app.get("/getBatch/:id", async (req, res) => {
       numericId: batchRecord.numericId,
       name: data[1],
       origin: data[2],
-      creator: data[3]
+      creator: data[3],
+      quantity: batchRecord.quantity,
+      quantityUnit: batchRecord.quantityUnit,
+      assignedTransporter: batchRecord.assignedTransporter,
+      farmerUsername: batchRecord.farmerUsername,
+      quantityMismatch: batchRecord.quantityMismatch,
+      transporterQuantityReceived: batchRecord.transporterQuantityReceived,
+      custodyConfirmedAt: batchRecord.custodyConfirmedAt,
     });
 
   } catch (err) {
@@ -193,6 +203,50 @@ app.get("/generateQR/:id", async (req, res) => {
 
     res.json({ qr: qrImage });
 
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// GET ALL TRANSPORTERS (for farmer to assign)
+app.get("/getTransporters", async (req, res) => {
+  try {
+    const transporters = await User.find(
+      { role: "transporter" },
+      "username transporterName vehicleNumber companyName"
+    );
+    res.json(transporters);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
+// CONFIRM CUSTODY (transporter confirms receipt with quantity)
+app.post("/confirmCustody", async (req, res) => {
+  try {
+    const { batchId, receivedQuantity } = req.body;
+
+    const batchRecord = await Batch.findOne({ stringId: batchId });
+    if (!batchRecord) {
+      return res.status(404).send("Batch not found");
+    }
+
+    const mismatch = batchRecord.quantity !== null &&
+      batchRecord.quantity !== undefined &&
+      Number(receivedQuantity) !== Number(batchRecord.quantity);
+
+    batchRecord.transporterQuantityReceived = Number(receivedQuantity);
+    batchRecord.quantityMismatch = mismatch;
+    batchRecord.custodyConfirmedAt = new Date();
+    await batchRecord.save();
+
+    res.json({
+      message: "Custody confirmed",
+      mismatch,
+      farmerQuantity: batchRecord.quantity,
+      quantityUnit: batchRecord.quantityUnit,
+      receivedQuantity: Number(receivedQuantity),
+    });
   } catch (err) {
     res.status(500).send(err.message);
   }
