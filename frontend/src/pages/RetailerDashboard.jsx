@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Store, MapPin, CheckCircle2, Loader, ScanLine } from 'lucide-react';
 import { Spinner } from '../components/LoadingSpinner';
@@ -10,7 +9,6 @@ const BASE_URL = "https://foodtrace-backend.onrender.com";
 
 export default function RetailerDashboard() {
   const { userProfile } = useApp();
-  const navigate = useNavigate();
 
   const [showScanner, setShowScanner] = useState(false);
   const [batchId, setBatchId] = useState('');
@@ -152,13 +150,6 @@ export default function RetailerDashboard() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
 
-      {/* Back button */}
-      <button
-        onClick={() => navigate('/dashboard')}
-        className="flex items-center gap-1.5 text-slate-500 hover:text-slate-300 transition-colors mb-6 text-sm"
-      >
-        <ArrowLeft size={15} /> Back to Dashboard
-      </button>
 
       {/* Header */}
       <div className="mb-8 page-enter">
