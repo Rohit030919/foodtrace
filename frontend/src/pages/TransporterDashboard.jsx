@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Truck, MapPin, CheckCircle2, Loader, ScanLine, ArrowLeft } from 'lucide-react';
+import { Truck, MapPin, CheckCircle2, Loader, ScanLine } from 'lucide-react';
 import { Spinner } from '../components/LoadingSpinner';
 import { useApp } from '../context/AppContext';
 import QRScanner from '../components/QRScanner';
@@ -158,13 +158,7 @@ export default function TransporterDashboard() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
 
-      {/* Back button */}
-      <button
-        onClick={() => navigate('/dashboard')}
-        className="flex items-center gap-1.5 text-slate-500 hover:text-slate-300 transition-colors mb-6 text-sm"
-      >
-        <ArrowLeft size={15} /> Back to Dashboard
-      </button>
+
 
       {/* Header */}
       <div className="mb-8 page-enter">

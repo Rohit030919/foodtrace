@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScanLine, ArrowRight, X } from 'lucide-react';
+import { ScanLine, ArrowRight, X, ArrowLeft } from 'lucide-react';
 import { Html5Qrcode } from "html5-qrcode";
 
 export default function TrackPage() {
@@ -11,25 +11,31 @@ export default function TrackPage() {
   const navigate = useNavigate();
 
   const scannerRef = useRef(null);
-  const isRunningRef = useRef(false); // ← tracks if scanner.start() actually completed
+  const isRunningRef = useRef(false);
+
+  // Get role from localStorage to know where Back button should go
+  const role = localStorage.getItem('ft_role');
+  const backPath = role === 'transporter'
+    ? '/transporter'
+    : role === 'retailer'
+    ? '/retailer'
+    : '/dashboard';
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!batchId || isNaN(batchId)) {
-      setError('Please enter a valid numeric Batch ID');
+    if (!batchId.trim()) {
+      setError('Please enter a Batch ID');
       return;
     }
-    navigate(`/batch/${batchId}`);
+    navigate(`/batch/${batchId.trim()}`);
   };
 
-  // Safe stop — only calls stop() if scanner actually started
   const safeStop = async () => {
     if (scannerRef.current && isRunningRef.current) {
       try {
         await scannerRef.current.stop();
-      } catch (_) {
-        // Already stopped — ignore
-      } finally {
+      } catch (_) {}
+      finally {
         isRunningRef.current = false;
       }
     }
@@ -44,7 +50,7 @@ export default function TrackPage() {
   useEffect(() => {
     if (!scanMode) return;
 
-    let cancelled = false; // prevents acting on results after unmount
+    let cancelled = false;
 
     const scanner = new Html5Qrcode("reader");
     scannerRef.current = scanner;
@@ -62,23 +68,23 @@ export default function TrackPage() {
           devices[0].id,
           { fps: 10, qrbox: 250 },
           (decodedText) => {
-            // QR scanned successfully
-            isRunningRef.current = true; // it was running when we got here
+            isRunningRef.current = true;
             safeStop().then(() => {
               if (!cancelled) {
-                const parts = decodedText.split('/');
-                const id = parts[parts.length - 1];
+                // Extract batch ID from full URL if needed
+                let id = decodedText.trim();
+                if (id.includes('/batch/')) {
+                  id = id.split('/batch/').pop().split('?')[0].split('#')[0].trim();
+                }
                 navigate(`/batch/${id}`);
               }
             });
           },
-          () => { /* scan errors are per-frame, ignore them */ }
+          () => {}
         ).then(() => {
-          // scanner.start() resolved — it is now actually running
           if (!cancelled) {
             isRunningRef.current = true;
           } else {
-            // Component unmounted before start finished — stop immediately
             scanner.stop().catch(() => {});
           }
         });
@@ -93,7 +99,6 @@ export default function TrackPage() {
 
     return () => {
       cancelled = true;
-      // Only stop if we know it started — this is what was crashing before
       if (isRunningRef.current) {
         scanner.stop().catch(() => {});
         isRunningRef.current = false;
@@ -106,6 +111,15 @@ export default function TrackPage() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-brand-500/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative w-full max-w-md page-enter">
+
+        {/* Back button — role-aware */}
+        <button
+          onClick={() => navigate(backPath)}
+          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-300 transition-colors mb-6 text-sm"
+        >
+          <ArrowLeft size={15} /> Back to Dashboard
+        </button>
+
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-500/10 border border-brand-500/20 mb-4">
             <ScanLine className="text-brand-400" size={28} />
@@ -119,9 +133,9 @@ export default function TrackPage() {
             <div>
               <label className="label">Batch ID</label>
               <input
-                type="number"
+                type="text"
                 className="input-field"
-                placeholder="e.g. 1001"
+                placeholder="e.g. roh-ap1-xw3k"
                 value={batchId}
                 onChange={e => { setBatchId(e.target.value); setError(''); }}
                 autoFocus
@@ -133,12 +147,10 @@ export default function TrackPage() {
             </button>
           </form>
 
-          {/* Camera error */}
           {cameraError && (
             <p className="text-red-400 text-xs mt-3 text-center">⚠ {cameraError}</p>
           )}
 
-          {/* Scan toggle */}
           {!scanMode ? (
             <button onClick={() => { setCameraError(''); setScanMode(true); }} className="btn-secondary w-full mt-4">
               <ScanLine size={15} /> Scan QR Code
@@ -149,7 +161,6 @@ export default function TrackPage() {
             </button>
           )}
 
-          {/* Camera view — only rendered when scanMode is true */}
           {scanMode && (
             <div className="mt-4">
               <div id="reader" className="rounded-xl overflow-hidden" />

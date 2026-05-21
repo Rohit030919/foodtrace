@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Store, MapPin, CheckCircle2, Loader, ScanLine, ArrowLeft } from 'lucide-react';
+import { Store, MapPin, CheckCircle2, Loader, ScanLine } from 'lucide-react';
 import { Spinner } from '../components/LoadingSpinner';
 import { useApp } from '../context/AppContext';
 import QRScanner from '../components/QRScanner';
