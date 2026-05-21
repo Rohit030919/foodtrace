@@ -13,13 +13,7 @@ export default function TrackPage() {
   const scannerRef = useRef(null);
   const isRunningRef = useRef(false);
 
-  // Get role from localStorage to know where Back button should go
-  const role = localStorage.getItem('ft_role');
-  const backPath = role === 'transporter'
-    ? '/transporter'
-    : role === 'retailer'
-    ? '/retailer'
-    : '/dashboard';
+  const backPath = '/dashboard';
 
   const handleSubmit = (e) => {
     e.preventDefault();
