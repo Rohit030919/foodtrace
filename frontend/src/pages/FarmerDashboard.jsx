@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Sprout, QrCode, CheckCircle2, MapPin, Tag, Loader, ArrowLeft } from 'lucide-react';
+import { Sprout, QrCode, CheckCircle2, MapPin, Tag, Loader } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const BASE_URL = "https://foodtrace-backend.onrender.com";
@@ -125,13 +125,6 @@ export default function FarmerDashboard() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
 
-      {/* Back button */}
-      <button
-        onClick={() => navigate('/dashboard')}
-        className="flex items-center gap-1.5 text-slate-500 hover:text-slate-300 transition-colors mb-6 text-sm"
-      >
-        <ArrowLeft size={15} /> Back to Dashboard
-      </button>
 
       {/* Header */}
       <div className="mb-8 page-enter">
