@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Moon, Sun, Scan, ChevronRight } from 'lucide-react';
+import { LogOut, Scan, ChevronRight } from 'lucide-react';
 import { useApp, ROLE_CONFIG } from '../context/AppContext';
 
 export default function Navbar() {
@@ -45,23 +45,16 @@ export default function Navbar() {
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
-            {/* Track button */}
-            <Link
-              to="/track"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-slate-400 hover:text-brand-400 hover:bg-brand-500/10 transition-all"
-            >
-              <Scan size={15} />
-              Track
-            </Link>
-
-            {/* Dark mode toggle */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-all"
-              aria-label="Toggle dark mode"
-            >
-              {darkMode ? <Sun size={17} /> : <Moon size={17} />}
-            </button>
+            {/* Track button - only show when logged in */}
+            {role && (
+              <Link
+                to="/track"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-slate-400 hover:text-brand-400 hover:bg-brand-500/10 transition-all"
+              >
+                <Scan size={15} />
+                Track
+              </Link>
+            )}
 
             {/* Logout */}
             {role && (
