@@ -118,7 +118,7 @@ export default function FarmerDashboard() {
           name: form.name,
           origin: fullOrigin,
           farmerUsername,
-          qquantity: Number(form.quantity),
+          quantity: Number(form.quantity),
           quantityUnit: form.quantityUnit,
           assignedTransporter: form.assignedTransporter || null,
           expiryDate: form.expiryDate || null,
