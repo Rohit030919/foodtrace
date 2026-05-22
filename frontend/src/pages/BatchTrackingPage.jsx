@@ -1,10 +1,48 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, QrCode, RefreshCw, Package } from 'lucide-react';
+import { ArrowLeft, QrCode, RefreshCw, Package, Sprout, Truck } from 'lucide-react';
 import { getHistory, getBatch } from '../services/api';
 import StageTimeline from '../components/StageTimeline';
 import { PageLoader, SkeletonCard } from '../components/LoadingSpinner';
+
+// Freshness calculation
+function getFreshness(expiryDate, createdAt) {
+  if (!expiryDate) return null;
+  const now = new Date();
+  const expiry = new Date(expiryDate);
+  const created = new Date(createdAt);
+  const totalLife = expiry - created;
+  const remaining = expiry - now;
+  const daysRemaining = Math.ceil(remaining / (1000 * 60 * 60 * 24));
+  const percentRemaining = totalLife > 0 ? (remaining / totalLife) * 100 : 0;
+
+  if (remaining <= 0) {
+    return {
+      status: 'Expired',
+      emoji: '🔴',
+      color: 'text-red-400',
+      bg: 'bg-red-500/10 border-red-500/30',
+      daysRemaining: 0,
+    };
+  }
+  if (percentRemaining <= 30) {
+    return {
+      status: 'Near Expiry',
+      emoji: '🟡',
+      color: 'text-amber-400',
+      bg: 'bg-amber-500/10 border-amber-500/30',
+      daysRemaining,
+    };
+  }
+  return {
+    status: 'Fresh',
+    emoji: '🟢',
+    color: 'text-brand-400',
+    bg: 'bg-brand-500/10 border-brand-500/30',
+    daysRemaining,
+  };
+}
 
 export default function BatchTrackingPage() {
   const { id } = useParams();
@@ -14,17 +52,9 @@ export default function BatchTrackingPage() {
   const [history, setHistory] = useState(null);
   const [error, setError] = useState(null);
 
-  // ─── Fixed fetchData ───────────────────────────────────────────────────────
-  // Root cause of blank screen: the old version called setLoading(false) in
-  // `finally` even when a retry was scheduled via setTimeout. So loading went
-  // false → blank screen, then the retry ran with no loader shown.
-  //
-  // Fix: don't use finally at all. Set loading=false explicitly only when
-  // we are truly done (success OR final failure after all retries).
   const fetchData = useCallback(async (retry = 0) => {
     setLoading(true);
     setError(null);
-
     try {
       const [info, hist] = await Promise.all([
         getBatch(id),
@@ -32,14 +62,11 @@ export default function BatchTrackingPage() {
       ]);
       setBatchInfo(info);
       setHistory(hist);
-      setLoading(false); // success — stop loading
+      setLoading(false);
     } catch (err) {
       if (retry < 3) {
-        // Still retrying — keep loading=true so the spinner stays visible
-        // Do NOT setLoading(false) here — that caused the blank screen
         setTimeout(() => fetchData(retry + 1), 1000);
       } else {
-        // All retries exhausted — now stop loading and show error
         setError(err.message || 'Failed to load batch data');
         setLoading(false);
         toast.error('Could not load batch data');
@@ -52,6 +79,7 @@ export default function BatchTrackingPage() {
   }, [fetchData]);
 
   const stagesCompleted = history ? new Set(history.map(h => h.stage)).size : 0;
+  const freshness = batchInfo ? getFreshness(batchInfo.expiryDate, batchInfo.createdAt) : null;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
@@ -62,6 +90,7 @@ export default function BatchTrackingPage() {
         <ArrowLeft size={15} /> Back
       </button>
 
+      {/* Top bar */}
       <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center">
@@ -82,7 +111,7 @@ export default function BatchTrackingPage() {
         </div>
       </div>
 
-      {/* Loading — stays visible during ALL retries */}
+      {/* Loading */}
       {loading && (
         <div className="space-y-4">
           <SkeletonCard />
@@ -90,7 +119,7 @@ export default function BatchTrackingPage() {
         </div>
       )}
 
-      {/* Error state */}
+      {/* Error */}
       {error && !loading && (
         <div className="glass-card border-red-500/30 p-8 text-center">
           <p className="text-5xl mb-4">🔍</p>
@@ -106,96 +135,100 @@ export default function BatchTrackingPage() {
       {/* Content */}
       {!loading && batchInfo && history && (
         <div className="space-y-6 page-enter">
+
+          {/* Main batch info card */}
           <div className="glass-card p-6">
+
+            {/* Badges */}
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <span className="badge bg-brand-500/10 text-brand-400 border border-brand-500/30">
+                🌿 On-Chain Verified
+              </span>
+              {stagesCompleted === 3 && (
+                <span className="badge bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                  ✅ Full Journey
+                </span>
+              )}
+              {batchInfo.quantityMismatch && (
+                <span className="badge bg-red-500/10 text-red-400 border border-red-500/30">
+                  ⚠️ Quantity Mismatch
+                </span>
+              )}
+              {freshness && (
+                <span className={`badge border ${freshness.bg} ${freshness.color}`}>
+                  {freshness.emoji} {freshness.status}
+                </span>
+              )}
+            </div>
+
             <div className="grid sm:grid-cols-3 gap-4">
+              {/* Left — product details */}
               <div className="sm:col-span-2">
-                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  <span className="badge bg-brand-500/10 text-brand-400 border border-brand-500/30">
-                    🌿 On-Chain Verified
-                  </span>
-                  {stagesCompleted === 3 && (
-                    <span className="badge bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                      ✅ Full Journey
-                    </span>
-                  )}
-                  {batchInfo.quantityMismatch && (
-                    <span className="badge bg-red-500/10 text-red-400 border border-red-500/30">
-                      ⚠️ Quantity Mismatch
-                    </span>
-                  )}
-              </div>
-
-              {/* Quantity info */}
-              {batchInfo.quantity && (
-                <div className="mt-3 pt-3 border-t border-slate-800">
-                  <div className="flex flex-wrap gap-4">
-                    <div>
-                      <p className="text-xs text-slate-500">Farmer Declared</p>
-                      <p className="text-sm font-semibold text-white">
-                        {batchInfo.quantity} {batchInfo.quantityUnit}
-                      </p>
-                    </div>
-                    {batchInfo.transporterQuantityReceived && (
-                      <div>
-                        <p className="text-xs text-slate-500">Transporter Received</p>
-                        <p className={`text-sm font-semibold ${batchInfo.quantityMismatch ? 'text-red-400' : 'text-brand-400'}`}>
-                          {batchInfo.transporterQuantityReceived} {batchInfo.quantityUnit}
-                          {batchInfo.quantityMismatch ? ' ⚠️' : ' ✅'}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  {batchInfo.quantityMismatch && (
-                    <p className="text-red-400 text-xs mt-2">
-                      ⚠️ Quantity mismatch detected during transport. {Number(batchInfo.quantity) - Number(batchInfo.transporterQuantityReceived)} {batchInfo.quantityUnit} unaccounted for.
-                    </p>
-                  )}
-                </div>
-              )}
-              </div>
-
-              {/* Quantity info */}
-              {batchInfo.quantity && (
-                <div className="mt-3 pt-3 border-t border-slate-800">
-                  <div className="flex flex-wrap gap-4">
-                    <div>
-                      <p className="text-xs text-slate-500">Farmer Declared</p>
-                      <p className="text-sm font-semibold text-white">
-                        {batchInfo.quantity} {batchInfo.quantityUnit}
-                      </p>
-                    </div>
-                    {batchInfo.transporterQuantityReceived && (
-                      <div>
-                        <p className="text-xs text-slate-500">Transporter Received</p>
-                        <p className={`text-sm font-semibold ${batchInfo.quantityMismatch ? 'text-red-400' : 'text-brand-400'}`}>
-                          {batchInfo.transporterQuantityReceived} {batchInfo.quantityUnit}
-                          {batchInfo.quantityMismatch ? ' ⚠️' : ' ✅'}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  {batchInfo.quantityMismatch && (
-                    <p className="text-red-400 text-xs mt-2">
-                      ⚠️ Quantity mismatch detected during transport. {Number(batchInfo.quantity) - Number(batchInfo.transporterQuantityReceived)} {batchInfo.quantityUnit} unaccounted for.
-                    </p>
-                  )}
-                </div>
-              )}
-
-                <h2 className="font-display font-bold text-2xl text-white mt-1">
-                  {batchInfo.name || batchInfo[1] || 'Unknown Product'}
+                <h2 className="font-display font-bold text-2xl text-white">
+                  {batchInfo.name || '—'}
                 </h2>
-                <div className="flex items-center gap-4 mt-2 flex-wrap">
-                  <p className="text-slate-400 text-sm">
-                    📍 <span className="text-white">{batchInfo.origin || batchInfo[2] || '—'}</span>
-                  </p>
-                  <p className="text-slate-600 text-xs font-mono">ID: #{batchInfo.id ?? id}</p>
-                </div>
-                {(batchInfo.currentOwner || batchInfo[3]) && (
-                  <p className="text-slate-600 text-xs mt-2 font-mono">
-                    Current owner: {(batchInfo.currentOwner || batchInfo[3])?.slice(0, 20)}…
-                  </p>
+                <p className="text-slate-400 text-sm mt-1">
+                  📍 <span className="text-white">{batchInfo.origin || '—'}</span>
+                </p>
+                <p className="text-slate-600 text-xs font-mono mt-1">ID: #{batchInfo.id ?? id}</p>
+
+                {/* Quantity */}
+                {batchInfo.quantity && (
+                  <div className="mt-3 pt-3 border-t border-slate-800">
+                    <div className="flex flex-wrap gap-4">
+                      <div>
+                        <p className="text-xs text-slate-500">Farmer Declared</p>
+                        <p className="text-sm font-semibold text-white">
+                          {batchInfo.quantity} {batchInfo.quantityUnit}
+                        </p>
+                      </div>
+                      {batchInfo.transporterQuantityReceived && (
+                        <div>
+                          <p className="text-xs text-slate-500">Transporter Received</p>
+                          <p className={`text-sm font-semibold ${batchInfo.quantityMismatch ? 'text-red-400' : 'text-brand-400'}`}>
+                            {batchInfo.transporterQuantityReceived} {batchInfo.quantityUnit}
+                            {batchInfo.quantityMismatch ? ' ⚠️' : ' ✅'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    {batchInfo.quantityMismatch && (
+                      <p className="text-red-400 text-xs mt-2">
+                        ⚠️ {Number(batchInfo.quantity) - Number(batchInfo.transporterQuantityReceived)} {batchInfo.quantityUnit} unaccounted for during transport.
+                      </p>
+                    )}
+                  </div>
                 )}
+
+                {/* Freshness details */}
+                {freshness && (
+                  <div className="mt-3 pt-3 border-t border-slate-800">
+                    <div className="flex flex-wrap gap-4">
+                      <div>
+                        <p className="text-xs text-slate-500">Best Before</p>
+                        <p className="text-sm font-semibold text-white">
+                          {new Date(batchInfo.expiryDate).toLocaleDateString('en-IN', {
+                            day: '2-digit', month: 'short', year: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Status</p>
+                        <p className={`text-sm font-semibold ${freshness.color}`}>
+                          {freshness.emoji} {freshness.status}
+                          {freshness.daysRemaining > 0 && (
+                            <span className="text-slate-500 font-normal ml-1">
+                              ({freshness.daysRemaining} days left)
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right — journey progress */}
               <div className="flex flex-col justify-center items-start sm:items-end">
                 <p className="text-slate-500 text-xs mb-1">Journey progress</p>
                 <p className={`font-display font-bold text-4xl ${
@@ -216,6 +249,71 @@ export default function BatchTrackingPage() {
             </div>
           </div>
 
+          {/* Farmer details card */}
+          {batchInfo.farmerProfile && (
+            <div className="glass-card p-5 border-brand-500/20">
+              <div className="flex items-center gap-2 mb-3">
+                <Sprout size={16} className="text-brand-400" />
+                <h3 className="font-display font-semibold text-white text-sm">Farmer Details</h3>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div>
+                  <p className="text-xs text-slate-500">Name</p>
+                  <p className="text-sm text-white font-semibold">{batchInfo.farmerProfile.farmerName || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Village</p>
+                  <p className="text-sm text-white font-semibold">{batchInfo.farmerProfile.village || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Farm Location</p>
+                  <p className="text-sm text-white font-semibold">{batchInfo.farmerProfile.farmLocation || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Contact</p>
+                  <p className="text-sm text-white font-semibold">{batchInfo.farmerProfile.contact || '—'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Transporter details card */}
+          {batchInfo.transporterProfile && (
+            <div className="glass-card p-5 border-blue-500/20">
+              <div className="flex items-center gap-2 mb-3">
+                <Truck size={16} className="text-blue-400" />
+                <h3 className="font-display font-semibold text-white text-sm">Transporter Details</h3>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div>
+                  <p className="text-xs text-slate-500">Name</p>
+                  <p className="text-sm text-white font-semibold">{batchInfo.transporterProfile.transporterName || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Vehicle No.</p>
+                  <p className="text-sm text-white font-semibold">{batchInfo.transporterProfile.vehicleNumber || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Company</p>
+                  <p className="text-sm text-white font-semibold">{batchInfo.transporterProfile.companyName || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Vehicle Type</p>
+                  <p className="text-sm text-white font-semibold">{batchInfo.transporterProfile.vehicleType || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">License No.</p>
+                  <p className="text-sm text-white font-semibold">{batchInfo.transporterProfile.licenseNumber || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Phone</p>
+                  <p className="text-sm text-white font-semibold">{batchInfo.transporterProfile.transporterPhone || '—'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Supply chain events */}
           <div className="glass-card p-6">
             <h3 className="font-display font-semibold text-lg text-white mb-6">
               Supply Chain Events
@@ -224,6 +322,7 @@ export default function BatchTrackingPage() {
             <StageTimeline history={history} />
           </div>
 
+          {/* Blockchain note */}
           <div className="glass-card p-4 flex items-start gap-3">
             <span className="text-lg flex-shrink-0">⛓️</span>
             <p className="text-slate-500 text-sm leading-relaxed">

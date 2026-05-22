@@ -11,6 +11,7 @@ const batchSchema = new mongoose.Schema({
   transporterQuantityReceived: Number,
   quantityMismatch:            { type: Boolean, default: false },
   custodyConfirmedAt:          Date,
+  expiryDate:                  Date,
   createdAt:                   { type: Date, default: Date.now }
 });
 

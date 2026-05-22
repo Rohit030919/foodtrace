@@ -16,6 +16,7 @@ export default function FarmerDashboard() {
     quantity: '',
     quantityUnit: 'kg',
     assignedTransporter: '',
+    expiryDate: '',
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -117,9 +118,10 @@ export default function FarmerDashboard() {
           name: form.name,
           origin: fullOrigin,
           farmerUsername,
-          quantity: Number(form.quantity),
+          qquantity: Number(form.quantity),
           quantityUnit: form.quantityUnit,
           assignedTransporter: form.assignedTransporter || null,
+          expiryDate: form.expiryDate || null,
         })
       });
 
@@ -134,7 +136,7 @@ export default function FarmerDashboard() {
       setLastCreatedBatch({ name: form.name, origin: fullOrigin, id: data.stringId });
       setSuccess(true);
       toast.success(`Batch ${data.stringId} created on-chain! 🌿`);
-      setForm({ name: '', farmAddress: '', quantity: '', quantityUnit: 'kg', assignedTransporter: '' });
+      setForm({ name: '', farmAddress: '', quantity: '', quantityUnit: 'kg', assignedTransporter: '', expiryDate: '' });
 
     } catch (err) {
       toast.error(err.message || 'Transaction failed');
@@ -268,7 +270,23 @@ export default function FarmerDashboard() {
               {errors.farmAddress && <p className="text-red-400 text-xs mt-1">{errors.farmAddress}</p>}
               <p className="text-slate-600 text-xs mt-1">✏️ Enter your specific farm address manually</p>
             </div>
-
+                {/* Expiry Date */}
+            <div>
+              <label className="text-sm text-slate-400 mb-1 block">
+                Best Before / Expiry Date
+              </label>
+              <input
+                type="date"
+                className={`input-field w-full ${errors.expiryDate ? 'border-red-500' : ''}`}
+                value={form.expiryDate}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={change('expiryDate')}
+              />
+              {errors.expiryDate && <p className="text-red-400 text-xs mt-1">{errors.expiryDate}</p>}
+              <p className="text-slate-600 text-xs mt-1">
+                📅 Consumers will see freshness status based on this date
+              </p>
+            </div>
             {/* Assign Transporter */}
             <div>
               <label className="text-sm text-slate-400 mb-1 block">

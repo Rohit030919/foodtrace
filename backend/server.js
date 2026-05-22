@@ -49,7 +49,7 @@ function generateBatchId(farmerUsername, productName, count) {
 // CREATE BATCH (auto ID generation)
 app.post("/createBatch", async (req, res) => {
   try {
-    const { name, origin, farmerUsername, quantity, quantityUnit, assignedTransporter } = req.body;
+    const { name, origin, farmerUsername, quantity, quantityUnit, assignedTransporter, expiryDate } = req.body;
 
     if (!name || !origin || !farmerUsername) {
       return res.status(400).send("Name, origin and farmerUsername are required");
@@ -78,6 +78,7 @@ app.post("/createBatch", async (req, res) => {
       quantity: quantity ? Number(quantity) : null,
       quantityUnit: quantityUnit || 'kg',
       assignedTransporter: assignedTransporter ? assignedTransporter.toLowerCase() : null,
+      expiryDate: expiryDate ? new Date(expiryDate) : null,
     });
     await newBatch.save();
 
@@ -125,13 +126,43 @@ app.get("/getBatch/:id", async (req, res) => {
   try {
     const stringId = req.params.id;
 
-    // Look up numeric ID from MongoDB
     const batchRecord = await Batch.findOne({ stringId });
     if (!batchRecord) {
       return res.status(404).send("Batch not found");
     }
 
     const data = await contractRead.getBatch(batchRecord.numericId);
+
+    // Fetch farmer profile
+    let farmerProfile = null;
+    if (batchRecord.farmerUsername) {
+      const farmer = await User.findOne({ username: batchRecord.farmerUsername });
+      if (farmer) {
+        farmerProfile = {
+          farmerName:   farmer.farmerName,
+          contact:      farmer.contact,
+          village:      farmer.village,
+          farmLocation: farmer.farmLocation,
+          aadharNo:     farmer.aadharNo,
+        };
+      }
+    }
+
+    // Fetch transporter profile
+    let transporterProfile = null;
+    if (batchRecord.assignedTransporter) {
+      const transporter = await User.findOne({ username: batchRecord.assignedTransporter });
+      if (transporter) {
+        transporterProfile = {
+          transporterName:  transporter.transporterName,
+          vehicleNumber:    transporter.vehicleNumber,
+          companyName:      transporter.companyName,
+          vehicleType:      transporter.vehicleType,
+          transporterPhone: transporter.transporterPhone,
+          licenseNumber:    transporter.licenseNumber,
+        };
+      }
+    }
 
     res.json({
       id: stringId,
@@ -146,6 +177,10 @@ app.get("/getBatch/:id", async (req, res) => {
       quantityMismatch: batchRecord.quantityMismatch,
       transporterQuantityReceived: batchRecord.transporterQuantityReceived,
       custodyConfirmedAt: batchRecord.custodyConfirmedAt,
+      expiryDate: batchRecord.expiryDate,
+      createdAt: batchRecord.createdAt,
+      farmerProfile,
+      transporterProfile,
     });
 
   } catch (err) {
