@@ -18,10 +18,10 @@ function AppRoutes() {
       <main className="relative z-10">
         <Routes>
 
-          {/* ✅ ALWAYS show login at root */}
+          {/* ALWAYS show login at root */}
           <Route path="/" element={<LoginPage />} />
 
-          {/* ✅ Protected Dashboard */}
+          {/*  Protected Dashboard */}
           <Route
             path="/dashboard"
             element={

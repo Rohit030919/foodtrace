@@ -218,7 +218,7 @@ export default function FarmerDashboard() {
                 </select>
               </div>
               {errors.quantity && <p className="text-red-400 text-xs mt-1">{errors.quantity}</p>}
-              <p className="text-slate-600 text-xs mt-1">📦 Transporter will verify this quantity on pickup</p>
+              <p className="text-slate-600 text-xs mt-1">Transporter will verify this quantity on pickup</p>
             </div>
 
             {/* GPS Region */}
@@ -251,7 +251,7 @@ export default function FarmerDashboard() {
               </div>
               {locationError && <p className="text-red-400 text-xs mt-1">{locationError}</p>}
               {errors.location && !locationError && <p className="text-red-400 text-xs mt-1">{errors.location}</p>}
-              <p className="text-slate-600 text-xs mt-1">📍 Auto-detected — cannot be changed</p>
+              <p className="text-slate-600 text-xs mt-1">Auto-detected — cannot be changed</p>
             </div>
 
             {/* Manual Farm Address */}
@@ -268,7 +268,7 @@ export default function FarmerDashboard() {
                 />
               </div>
               {errors.farmAddress && <p className="text-red-400 text-xs mt-1">{errors.farmAddress}</p>}
-              <p className="text-slate-600 text-xs mt-1">✏️ Enter your specific farm address manually</p>
+              <p className="text-slate-600 text-xs mt-1">Enter your specific farm address manually</p>
             </div>
                 {/* Expiry Date */}
             <div>
@@ -284,7 +284,7 @@ export default function FarmerDashboard() {
               />
               {errors.expiryDate && <p className="text-red-400 text-xs mt-1">{errors.expiryDate}</p>}
               <p className="text-slate-600 text-xs mt-1">
-                📅 Consumers will see freshness status based on this date
+                Consumers will see freshness status based on this date
               </p>
             </div>
             {/* Assign Transporter */}
@@ -310,7 +310,7 @@ export default function FarmerDashboard() {
                 </select>
               </div>
               <p className="text-slate-600 text-xs mt-1">
-                🚛 Assigned transporter will see a notification on their dashboard
+                Assigned transporter will see a notification on their dashboard
               </p>
             </div>
 
@@ -360,7 +360,7 @@ export default function FarmerDashboard() {
 
       {/* Tips */}
       <div className="mt-6 glass-card p-4">
-        <h3 className="font-display font-semibold text-slate-400 text-sm mb-2">📋 How it works</h3>
+        <h3 className="font-display font-semibold text-slate-400 text-sm mb-2">How it works</h3>
         <ul className="space-y-1.5 text-sm text-slate-500">
           <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">01.</span> Allow GPS access when prompted</li>
           <li className="flex items-start gap-2"><span className="text-brand-500 mt-0.5">02.</span> Enter product name, quantity and farm address</li>

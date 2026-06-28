@@ -97,7 +97,7 @@ export default function StageTimeline({ history }) {
                       </span>
                     </div>
                     <p className="text-white font-semibold mt-1 text-sm">
-                      📍 {event.location}
+                       {event.location}
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">

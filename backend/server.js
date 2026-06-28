@@ -120,7 +120,6 @@ app.post("/updateBatch", async (req, res) => {
 });
 
 
-// GET BATCH INFO
 // GET BATCH INFO (accepts string ID)
 app.get("/getBatch/:id", async (req, res) => {
   try {

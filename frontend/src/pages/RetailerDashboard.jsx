@@ -89,7 +89,7 @@ export default function RetailerDashboard() {
       const data = await res.json();
       setBatchInfo(data);
       setBatchVerified(true);
-      toast.success('Batch verified ✅');
+      toast.success('Batch verified');
     } catch {
       toast.error('Error verifying batch');
     } finally {
@@ -135,7 +135,7 @@ export default function RetailerDashboard() {
 
       setLastUpdate({ id: batchId, location: fullLocation });
       setSuccess(true);
-      toast.success(`Retail arrival recorded for Batch ${batchId} 🏪`);
+      toast.success(`Retail arrival recorded for Batch ${batchId} `);
       setBatchId('');
       setBatchVerified(false);
       setBatchInfo(null);
@@ -220,7 +220,7 @@ export default function RetailerDashboard() {
               </span>
             )}
           </div>
-          <p className="text-xs text-amber-400/70 mt-2">✅ All details auto-filled — no manual entry needed</p>
+          <p className="text-xs text-amber-400/70 mt-2">All details auto-filled — no manual entry needed</p>
         </div>
       )}
 
@@ -274,7 +274,7 @@ export default function RetailerDashboard() {
 
             {batchVerified && batchInfo && (
               <div className="mt-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <p className="text-amber-400 text-sm font-semibold">✅ Batch Verified</p>
+                <p className="text-amber-400 text-sm font-semibold">Batch Verified</p>
                 <p className="text-slate-400 text-xs mt-1">
                   <strong className="text-white">{batchInfo.name}</strong> — Origin: {batchInfo.origin}
                 </p>
@@ -285,7 +285,7 @@ export default function RetailerDashboard() {
                 )}
                 {batchInfo.quantityMismatch && (
                   <div className="mt-2 flex items-center gap-2 text-red-400">
-                    <p className="text-xs">⚠️ Quantity mismatch was reported by transporter</p>
+                    <p className="text-xs">Quantity mismatch was reported by transporter</p>
                   </div>
                 )}
               </div>
@@ -324,7 +324,7 @@ export default function RetailerDashboard() {
 
       {/* Info */}
       <div className="mt-6 glass-card p-4">
-        <h3 className="font-display font-semibold text-slate-400 text-sm mb-2">🏪 Retailer Role</h3>
+        <h3 className="font-display font-semibold text-slate-400 text-sm mb-2">Retailer Role</h3>
         <ul className="space-y-1.5 text-sm text-slate-500">
           <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">01.</span> Your shop details are auto-filled from your registered profile</li>
           <li className="flex items-start gap-2"><span className="text-amber-500 mt-0.5">02.</span> Scan the QR code or enter Batch ID manually and verify</li>

@@ -142,11 +142,11 @@ export default function BatchTrackingPage() {
             {/* Badges */}
             <div className="flex items-center gap-2 mb-3 flex-wrap">
               <span className="badge bg-brand-500/10 text-brand-400 border border-brand-500/30">
-                🌿 On-Chain Verified
+                On-Chain Verified
               </span>
               {stagesCompleted === 3 && (
                 <span className="badge bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                  ✅ Full Journey
+                  Full Journey
                 </span>
               )}
               {batchInfo.quantityMismatch && (
@@ -168,7 +168,7 @@ export default function BatchTrackingPage() {
                   {batchInfo.name || '—'}
                 </h2>
                 <p className="text-slate-400 text-sm mt-1">
-                  📍 <span className="text-white">{batchInfo.origin || '—'}</span>
+                  <span className="text-white">{batchInfo.origin || '—'}</span>
                 </p>
                 <p className="text-slate-600 text-xs font-mono mt-1">ID: #{batchInfo.id ?? id}</p>
 
@@ -194,7 +194,7 @@ export default function BatchTrackingPage() {
                     </div>
                     {batchInfo.quantityMismatch && (
                       <p className="text-red-400 text-xs mt-2">
-                        ⚠️ {Number(batchInfo.quantity) - Number(batchInfo.transporterQuantityReceived)} {batchInfo.quantityUnit} unaccounted for during transport.
+                        {Number(batchInfo.quantity) - Number(batchInfo.transporterQuantityReceived)} {batchInfo.quantityUnit} unaccounted for during transport.
                       </p>
                     )}
                   </div>
@@ -324,7 +324,7 @@ export default function BatchTrackingPage() {
 
           {/* Blockchain note */}
           <div className="glass-card p-4 flex items-start gap-3">
-            <span className="text-lg flex-shrink-0">⛓️</span>
+            <span className="text-lg flex-shrink-0"></span>
             <p className="text-slate-500 text-sm leading-relaxed">
               All events above are immutably recorded on the Ethereum blockchain.
               Each entry includes a cryptographic timestamp and the wallet address of the handler —

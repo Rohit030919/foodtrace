@@ -96,7 +96,7 @@ export default function TransporterDashboard() {
       setBatchVerified(true);
       // Pre-fill received quantity with farmer's declared quantity
       setReceivedQuantity(data.quantity ? String(data.quantity) : '');
-      toast.success('Batch verified ✅');
+      toast.success('Batch verified');
     } catch {
       toast.error('Error verifying batch');
     } finally {
@@ -173,9 +173,9 @@ export default function TransporterDashboard() {
       setSuccess(true);
 
       if (mismatch) {
-        toast.error(`⚠️ Quantity mismatch flagged! Farmer sent ${batchInfo.quantity} ${batchInfo.quantityUnit}, you received ${receivedQuantity} ${batchInfo.quantityUnit}`);
+        toast.error(`Quantity mismatch flagged! Farmer sent ${batchInfo.quantity} ${batchInfo.quantityUnit}, you received ${receivedQuantity} ${batchInfo.quantityUnit}`);
       } else {
-        toast.success(`Transport update recorded for Batch ${batchId} 🚛`);
+        toast.success(`Transport update recorded for Batch ${batchId}`);
       }
 
       setBatchId('');
@@ -246,7 +246,7 @@ export default function TransporterDashboard() {
             </div>
           </div>
           <p className="text-xs text-blue-400/70 mt-3">
-            ✅ These details are automatically attached to every batch update
+            These details are automatically attached to every batch update
           </p>
         </div>
       )}
@@ -302,7 +302,7 @@ export default function TransporterDashboard() {
             {/* Verified batch info */}
             {batchVerified && batchInfo && (
               <div className="mt-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                <p className="text-blue-400 text-sm font-semibold">✅ Batch Verified</p>
+                <p className="text-blue-400 text-sm font-semibold">Batch Verified</p>
                 <p className="text-slate-400 text-xs mt-1">
                   <strong className="text-white">{batchInfo.name}</strong> — Origin: {batchInfo.origin}
                 </p>
@@ -319,7 +319,7 @@ export default function TransporterDashboard() {
                   </div>
                 )}
                 {batchInfo.assignedTransporter && isAssignedTransporter && (
-                  <p className="text-xs text-brand-400 mt-1">✅ You are the assigned transporter for this batch</p>
+                  <p className="text-xs text-brand-400 mt-1">You are the assigned transporter for this batch</p>
                 )}
               </div>
             )}
@@ -346,7 +346,7 @@ export default function TransporterDashboard() {
                 <span className="text-slate-400 text-sm flex-shrink-0">{batchInfo.quantityUnit}</span>
               </div>
               <p className="text-slate-600 text-xs mt-1">
-                📦 Farmer declared <strong className="text-slate-400">{batchInfo.quantity} {batchInfo.quantityUnit}</strong> — enter what you actually received
+                Farmer declared <strong className="text-slate-400">{batchInfo.quantity} {batchInfo.quantityUnit}</strong> — enter what you actually received
               </p>
             </div>
           )}
@@ -380,7 +380,7 @@ export default function TransporterDashboard() {
               />
             </div>
             {locationError && <p className="text-red-400 text-xs mt-1">{locationError}</p>}
-            <p className="text-slate-600 text-xs mt-1">📍 Auto-detected — cannot be changed</p>
+            <p className="text-slate-600 text-xs mt-1">Auto-detected — cannot be changed</p>
           </div>
 
           {/* Manual checkpoint */}
@@ -396,7 +396,7 @@ export default function TransporterDashboard() {
                 onChange={(e) => setManualLocation(e.target.value)}
               />
             </div>
-            <p className="text-slate-600 text-xs mt-1">✏️ Only this field needs manual entry</p>
+            <p className="text-slate-600 text-xs mt-1">Only this field needs manual entry</p>
           </div>
 
           <button
@@ -423,7 +423,7 @@ export default function TransporterDashboard() {
             </div>
             <div>
               <h3 className={`font-display font-bold text-lg ${lastUpdate.mismatch ? 'text-red-400' : 'text-blue-400'}`}>
-                {lastUpdate.mismatch ? '⚠️ Mismatch Flagged — Transport Logged' : 'Transport Logged!'}
+                {lastUpdate.mismatch ? 'Mismatch Flagged — Transport Logged' : 'Transport Logged!'}
               </h3>
               {lastUpdate.mismatch && custodyResult && (
                 <div className="mt-2 mb-3 p-2 rounded-lg bg-red-500/10 border border-red-500/20">
@@ -448,7 +448,7 @@ export default function TransporterDashboard() {
 
       {/* Info */}
       <div className="mt-6 glass-card p-4">
-        <h3 className="font-display font-semibold text-slate-400 text-sm mb-2">🚛 Transporter Role</h3>
+        <h3 className="font-display font-semibold text-slate-400 text-sm mb-2">Transporter Role</h3>
         <ul className="space-y-1.5 text-sm text-slate-500">
           <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">01.</span> Scan QR or enter Batch ID and verify</li>
           <li className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">02.</span> Enter quantity you physically received — must match farmer's declared amount</li>
